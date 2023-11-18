@@ -1,0 +1,7 @@
+require("user.options")
+require("user.globals")
+require("user.keymaps")
+require("user.aucmds")
+require("user.ar")
+require("user.plugins")
+require("user.custom")
