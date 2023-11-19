@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-field, missing-fields
 require("dracula").setup({
 	show_end_of_buffer = true,
 	italic_comment = true,
@@ -7,9 +8,9 @@ require("dracula").setup({
 			LspReferenceText = { bg = colors.selection },
 			LspReferenceRead = { bg = colors.selection },
 			LspReferenceWrite = { bg = colors.selection },
-			IlluminatedWordText = { bg = colors.selection },
-			IlluminatedWordRead = { bg = colors.selection },
-			IlluminatedWordWrite = { bg = colors.selection },
+			IlluminatedWordText = { bg = colors.selection, standout = true },
+			IlluminatedWordRead = { bg = colors.selection, standout = true },
+			IlluminatedWordWrite = { bg = colors.selection, standout = true },
 			TreesitterContext = { bg = colors.selection },
 			QuickScopePrimary = { fg = highlights.Function.fg, standout = true },
 			QuickScopeSecondary = { fg = highlights.Define.fg, standout = true },

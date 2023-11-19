@@ -1,12 +1,7 @@
--- TODO: Clean up
--- TODO: Use lua where possible
--- TODO: Get rid of LSPZero and utilize native LSP
 -- TODO: Use Lazy instead of Packer
--- TODO: Canonicalize Mason's installs
--- TODO: Ask before PackerSyncing on write
+local packer_path = vim.fn.stdpath("data") .. "/site/pack/packer"
+local install_path = packer_path .. "/start/packer.nvim"
 
--- TODO: Can't we just use vim.cmd.packadd("packer.nvim")?
-local install_path = vim.fn.stdpath("data") .. "/site/pack/packer/start/packer.nvim"
 if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
 	PACKER_BOOTSTRAP = vim.fn.system({
 		"git",
@@ -18,23 +13,33 @@ if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
 	})
 	print("Installing packer close and reopen Neovim...")
 	vim.cmd.packadd("packer.nvim")
+	if vim.fn.empty(vim.fn.glob(vim.fn.stdpath("config") .. ".packer-plugins")) > 0 then
+		vim.fn.system({ "ln", "-s", packer_path, vim.fn.stdpath("config") .. "/.packer-plugins" })
+	end
 end
 
-vim.cmd([[
-augroup packer_src_n_sync_on_write
-autocmd!
-autocmd BufWritePost lua/user/plugins/init.lua source <afile> | PackerSync
-augroup end
-]])
+local ag = vim.api.nvim_create_augroup("packer_sync", {})
+vim.api.nvim_create_autocmd("BufWritePost", {
+	group = ag,
+	pattern = "lua/user/plugins.lua",
+	callback = function(ev)
+		local choice = vim.fn.confirm("Source and sync?", "&Yes\n&No", 2)
+		if choice ~= 1 then
+			return
+		end
+		vim.cmd("source " .. ev.file)
+		vim.cmd("PackerSync")
+	end,
+})
 
 local ok, packer = pcall(require, "packer")
 if not ok then
-	print("Error loading packer: " .. packer)
 	return
 end
 
 packer.init({
 	display = {
+		preview_updates = true,
 		open_fn = function()
 			return require("packer.util").float({ border = "rounded" })
 		end,
@@ -42,6 +47,7 @@ packer.init({
 })
 
 return packer.startup(function(use)
+	use({ "nvim-lua/plenary.nvim" })
 	use({ "wbthomason/packer.nvim", requires = "nvim-lua/plenary.nvim" })
 
 	use({ "nvim-telescope/telescope.nvim" })
@@ -64,12 +70,12 @@ return packer.startup(function(use)
 	use({ "mbbill/undotree" })
 	use({ "tpope/vim-fugitive" })
 
-	use({ "mg979/vim-visual-multi", branch = "master" })
+	use({ "mg979/vim-visual-multi" })
 
 	use({ "lewis6991/gitsigns.nvim" })
 	use({ "ruifm/gitlinker.nvim" })
 
-	use({ "jose-elias-alvarez/null-ls.nvim" }) -- deprecated
+	use({ "nvimtools/none-ls.nvim" })
 
 	use({ "Mofiqul/dracula.nvim" })
 
@@ -83,39 +89,26 @@ return packer.startup(function(use)
 	use({ "goolord/alpha-nvim" })
 	-- use({ "folke/which-key.nvim" })
 
-	-- TODO: Get rid of LSPZero
-	use({
-		"VonHeikemen/lsp-zero.nvim",
-		requires = {
-			-- LSP Support
-			{ "neovim/nvim-lspconfig" },
-			{
-				"williamboman/mason.nvim",
-				run = function()
-					vim.cmd("MasonUpdate")
-				end,
-			},
-			{ "williamboman/mason-lspconfig.nvim" },
-
-			-- Autocompletion
-			{ "hrsh7th/nvim-cmp" },
-			{ "hrsh7th/cmp-buffer" },
-			{ "hrsh7th/cmp-path" },
-			{ "saadparwaiz1/cmp_luasnip" },
-			{ "hrsh7th/cmp-nvim-lsp" },
-			{ "hrsh7th/cmp-nvim-lua" },
-
-			-- Snippets
-			{ "L3MON4D3/LuaSnip" },
-			{ "rafamadriz/friendly-snippets" },
-		},
-	})
+	use({ "williamboman/mason.nvim", run = "MasonUpdate" })
+	use({ "williamboman/mason-lspconfig.nvim" })
+	use({ "neovim/nvim-lspconfig" })
+	use({ "hrsh7th/cmp-nvim-lsp" })
+	use({ "hrsh7th/nvim-cmp" })
+	use({ "hrsh7th/cmp-buffer" })
+	use({ "L3MON4D3/LuaSnip" })
+	use({ "rafamadriz/friendly-snippets" })
+	use({ "hrsh7th/cmp-nvim-lua" })
+	use({ "hrsh7th/cmp-path" })
+	use({ "saadparwaiz1/cmp_luasnip" })
 
 	use({ "RRethy/vim-illuminate" })
 
 	use({ "github/copilot.vim" })
 	use({ "tpope/vim-surround" })
-	use({ "airblade/vim-gitgutter" })
+	use({
+		"airblade/vim-gitgutter",
+		disable = true,
+	})
 	use({ "vim-airline/vim-airline" })
 	use({ "scrooloose/nerdcommenter" })
 	use({ "Djancyp/better-comments.nvim" })

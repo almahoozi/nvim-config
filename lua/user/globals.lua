@@ -1,3 +1,9 @@
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
+-- TODO: Move to vim-visual-multi config
+vim.g.VM_leader = "\\" -- Leader for Vim Multi Line plugin
+
 -- TODO: Move to copilot config
 -- Enable internally disabled copilot filetypes
 vim.g.copilot_filetypes = {

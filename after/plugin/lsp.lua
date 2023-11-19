@@ -1,35 +1,137 @@
-local lsp = require("lsp-zero")
-local util = require("lspconfig/util")
+-- https://vonheikemen.github.io/devlog/tools/setup-nvim-lspconfig-plus-nvim-cmp/#snippets
+-- https://github.com/VonHeikemen/lsp-zero.nvim/blob/v2.x/doc/md/lsp.md#you-might-not-need-lsp-zero
+
+-- TODO: Configure DAP, Linting, Formattings as well
+-- TODO: Do what Null-LS does since it is deprecated
+
+-- Use aucmd if not using mason-lspconfig's setup_handlers callback
+--[[
+vim.api.nvim_create_autocmd("LspAttach", {
+	callback = function(ev)
+		local name = vim.lsp.get_client_by_id(ev.data.client_id).name
+		local bufnr = ev.buf
+		local ok, keymaps = pcall(require, "lsp." .. name)
+		if ok then
+			if type(keymaps) ~= "table" or (keymaps.keymaps and type(keymaps.keymaps) ~= "function") then
+				print("Error loading keymaps for " .. name)
+				print(
+					"LSP specific keymaps must be returned in an exposed `keymaps(bufnr)` function in a Lua module under 'lua/lsp/' with the name matching the LSP Server's name, for example 'lua_ls.lua' (or 'lua_ls/init.lua')"
+				)
+			end
+
+			ok, keymaps = pcall(keymaps.keymaps, bufnr)
+			if not ok then
+				local err = keymaps
+				print("Error setting keymaps for " .. name .. ": " .. err)
+			end
+		end
+	end,
+})
+--]]
+
+require("mason").setup()
+require("mason-lspconfig").setup({
+	automatic_installation = true,
+	ensure_installed = {
+		-- TODO: Source list of installations from their respective configuration dirs
+		"bashls",
+		--"shfmt",
+
+		--"black",
+		"pyright",
+
+		--"delve",
+		--"goimports",
+		"golangci_lint_ls",
+		"gopls",
+		"templ",
+
+		"docker_compose_language_service",
+		--"dockerfilels",
+
+		"cssls",
+		"eslint",
+		"html",
+		"tsserver",
+
+		"jsonls",
+		"taplo",
+		"yamlls",
+
+		"lua_ls",
+		--"stylua",
+
+		--"markdownlint",
+		"marksman",
+
+		--"prettierd",
+
+		"rust_analyzer",
+
+		--"sql_formatter",
+		--"sqlfmt",
+		"sqlls",
+
+		"terraformls",
+		"tflint",
+
+		"vimls",
+	},
+})
+
 local cmp = require("cmp")
+local luasnip = require("luasnip")
 
-lsp.preset("recommended")
+-- Really?
+require("luasnip.loaders.from_vscode").lazy_load()
 
-lsp.ensure_installed({
-	"gopls",
-	"lua_ls",
-})
-
---local cmp_select = { behaviour = cmp.SelectBehavior.Select }
-local cmp_mappings = lsp.defaults.cmp_mappings({
-	-- ['<C-p>'] = cmp.mapping.select_prev_item(cmp_select),
-	-- ['<C-n>'] = cmp.mapping.select_next_item(cmp_select),
-	-- ['<C-y>'] = cmp.mapping.confirm({ select = true }),
-	["<CR>"] = cmp.mapping.confirm({ select = true }),
-	["<C-Space>"] = cmp.mapping.complete(),
-})
-
-lsp.set_sign_icons({
-	error = "",
-	warn = "",
-	info = "",
-	hint = "",
-})
-
-lsp.setup_nvim_cmp({
-	mapping = cmp_mappings,
-	preselect = true,
+-- https://github.com/LuaLS/lua-language-server/issues/2214#issuecomment-1685224510
+---@diagnostic disable: missing-fields
+cmp.setup({
+	mapping = {
+		["<CR>"] = cmp.mapping.confirm({ select = true }),
+		["<A-.>"] = cmp.mapping.complete(),
+		["<Esc>"] = cmp.mapping(function(fallback)
+			if cmp.visible() then
+				cmp.abort()
+			end
+			fallback()
+		end),
+		["<Up>"] = cmp.mapping.select_prev_item({ behavior = "select" }),
+		["<Down>"] = cmp.mapping.select_next_item({ behavior = "select" }),
+		["<C-j>"] = cmp.mapping(function(_)
+			if cmp.visible() then
+				cmp.select_next_item({ behavior = "insert" })
+			else
+				cmp.complete()
+			end
+		end),
+		["<C-k>"] = cmp.mapping(function(_)
+			if cmp.visible() then
+				cmp.select_prev_item({ behavior = "insert" })
+			else
+				cmp.complete()
+			end
+		end),
+	},
+	snippet = {
+		expand = function(args)
+			luasnip.lsp_expand(args.body)
+		end,
+	},
+	sources = {
+		{ name = "nvim_lsp", keyword_length = 1 },
+		{ name = "nvim_lua" },
+		{ name = "buffer", keyword_length = 3 },
+		{ name = "path" },
+		{ name = "luasnip", keyword_length = 2 },
+	},
+	window = {
+		documentation = cmp.config.window.bordered(),
+	},
 	formatting = {
-		format = function(entry, vim_item)
+		fields = { "kind", "abbr", "menu" },
+		format = function(entry, item)
 			local kind_icons = {
 				Text = "",
 				Method = "ƒ",
@@ -57,130 +159,46 @@ lsp.setup_nvim_cmp({
 				Operator = "",
 				TypeParameter = "T",
 			}
-			vim_item.kind = kind_icons[entry.kind]
-			vim_item.menu = ({
-				nvim_lsp = "[LSP]",
-				nvim_lua = "[Lua]",
-				buffer = "[BUF]",
-				path = "[PATH]",
-				calc = "[CALC]",
-				vsnip = "[VSNIP]",
-				nvim_treesitter = "[TS]",
-			})[entry.source.name]
-			if entry.source.name == "nvim_lsp" then
-				vim_item.menu = "[" .. entry.source.source.client.name:upper() .. "]"
+
+			local lsp_name = "LSP"
+			local client = entry.source.source.client
+			if client ~= nil then
+				lsp_name = client.name:upper()
 			end
-			return vim_item
+
+			local menu_text = {
+				nvim_lsp = "[" .. lsp_name .. "]",
+				luasnip = "[Lua]",
+				buffer = "[BUF]",
+			}
+
+			local completion_kinds = require("cmp.types.lsp").CompletionItemKind
+			local kind = ""
+			for k, v in pairs(completion_kinds) do
+				if v == entry.completion_item.kind then
+					kind = k
+					break
+				end
+			end
+			item.kind = kind_icons[kind] or kind
+			item.menu = menu_text[entry.source.name] or entry.source.name:gsub("_", ""):upper()
+			return item
 		end,
-		fields = { "kind", "abbr", "menu" },
 	},
 })
 
--- disable completion with tab, this helps with copilot setup
-cmp_mappings["<Tab>"] = nil
-cmp_mappings["<S-Tab>"] = nil
-
-lsp.on_attach(function(client, bufnr)
-	local opts = { buffer = bufnr, remap = false }
-
-	--vim.keymap.set("n", "gd", function() vim.lsp.buf.definition() end, opts)
-	vim.keymap.set("n", "K", function()
-		vim.lsp.buf.hover()
-	end, opts)
-	--vim.keymap.set("n", "<leader>vws", function() vim.lsp.buf.workspace_symbol() end, opts)
-	--vim.keymap.set("n", "<leader>vds", function() vim.lsp.buf.document_symbol() end, opts)
-	vim.keymap.set("n", "<leader>vd", function()
-		vim.diagnostic.open_float()
-	end, opts)
-	vim.keymap.set({ "n", "v", "x" }, "<leader>vca", function()
-		vim.lsp.buf.code_action()
-	end, opts)
-	--vim.keymap.set("n", "<leader>vrr", function() vim.lsp.buf.references() end, opts)
-	vim.keymap.set("n", "<leader>vrn", function()
-		vim.lsp.buf.rename()
-	end, opts)
-	vim.keymap.set({ "n", "i" }, "<C-h>", function()
-		vim.lsp.buf.signature_help()
-	end, opts)
-
-	-- Use Telescope mappings for LSP for better experience; themes: ivy, dropdown, cursor, default (empty)
-	vim.keymap.set("n", "gL", "<cmd>Telescope diagnostics theme=dropdown<cr>", opts)
-
-	vim.keymap.set("n", "gr", "<cmd>Telescope lsp_references theme=dropdown<cr>", opts)
-	vim.keymap.set("n", "gd", "<cmd>Telescope lsp_definitions theme=dropdown<cr>zt", opts)
-
-	-- Get implementations shows with cursor them with 50% of the screen
-	vim.keymap.set("n", "gi", "<cmd>Telescope lsp_implementations theme=cursor layout_config={width=0.5}<cr>", opts)
-	--vim.keymap.set("n", "gi", "<cmd>Telescope lsp_implementations theme=cursor<cr>", opts)
-	vim.keymap.set("n", "gD", "<cmd>Telescope lsp_type_definitions theme=dropdown<cr>", opts)
-	vim.keymap.set("n", "<leader>o", "<cmd>Telescope lsp_document_symbols theme=ivy<cr>", opts)
-	-- TODO: Cannot add a theme to this one
-	-- Pass input as query and set theme to dropdown
-	vim.keymap.set(
-		"n",
-		"<leader>t",
-		"<cmd>lua require('telescope.builtin').lsp_workspace_symbols({query = vim.fn.input('Symbol: '), theme = require('telescope.themes').get_dropdown({ previewer = 10 })})<cr><C-r><C-w>",
-		opts
-	)
-	vim.keymap.set("n", "]d", '<cmd>lua vim.diagnostic.goto_next({float = {source = "if_many"}})<cr>', opts)
-	vim.keymap.set("n", "[d", '<cmd>lua vim.diagnostic.goto_prev({float = {source = "if_many"}})<cr>', opts)
-
-	-- if go, organize imports
-	--if client.name == "gopls" then
-	--vim.cmd [[ autocmd BufWritePre <buffer> lua OrganizeGoImports() ]]
-	--end
-
-	-- Format on save
-	--vim.cmd([[autocmd BufWritePre <buffer> lua vim.lsp.buf.format()]])
-	-- Format on save
-	vim.cmd([[autocmd BufWritePre <buffer> lua if not vim.b.no_format_on_save then vim.lsp.buf.format() end]])
-
-	vim.cmd(
-		[[ command! -buffer Save execute 'lua vim.b.no_format_on_save = true' | write | execute 'lua vim.b.no_format_on_save = false' ]]
-	)
-end)
-
-function OrganizeGoImports(wait_ms)
-	local params = vim.lsp.util.make_range_params()
-	params.context = { only = { "source.organizeImports" } }
-	local result = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, wait_ms)
-	for cid, res in pairs(result or {}) do
-		for _, r in pairs(res.result or {}) do
-			if r.edit then
-				local enc = (vim.lsp.get_client_by_id(cid) or {}).offset_encoding or "utf-16"
-				vim.lsp.util.apply_workspace_edit(r.edit, enc)
-			end
-		end
-	end
+local sign = function(opts)
+	vim.fn.sign_define(opts.name, {
+		texthl = opts.name,
+		text = opts.text,
+		numhl = "",
+	})
 end
 
-require("lspconfig").lua_ls.setup(lsp.nvim_lua_ls())
-
-lsp.configure("gopls", {
-	root_dir = util.root_pattern("go.work", "go.mod", ".git", "main.go"),
-	filetypes = { "go", "gomod" },
-	settings = {
-		gopls = {
-			analyses = {
-				unusedparams = true,
-			},
-			staticcheck = true,
-		},
-	},
-})
-
-lsp.configure("rust_analyzer", {
-	root_dir = util.root_pattern("Cargo.toml", "rust-project.json", ".git", "main.rs"),
-	filetypes = { "rust" },
-})
-
---lsp.configure("csharp_ls", {
---root_dir = util.root_pattern("*.sln", ".git", "main.cs"),
---filetypes = { "cs", "csproj", "razor", "cshtml", "aspnetcorerazor" },
---})
-
-lsp.nvim_workspace()
-lsp.setup()
+sign({ name = "DiagnosticSignError", text = "" })
+sign({ name = "DiagnosticSignWarn", text = "" })
+sign({ name = "DiagnosticSignHint", text = "" })
+sign({ name = "DiagnosticSignInfo", text = "" })
 
 vim.diagnostic.config({
 	virtual_text = {
@@ -189,4 +207,152 @@ vim.diagnostic.config({
 	},
 	update_in_insert = true,
 	severity_sort = true,
+	float = {
+		border = "rounded",
+	},
+})
+
+-- Round them corners
+vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded" })
+vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded" })
+
+local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
+local lsp_attach = function(client, bufnr)
+	local name = client.name
+	local ok, lsp_on_attach = pcall(require, "lsp." .. name)
+	if ok then
+		if type(lsp_on_attach) ~= "table" or (lsp_on_attach.handler and type(lsp_on_attach.handler) ~= "function") then
+			print("Error loading keymaps for " .. name)
+			print(
+				"LSP specific on_attach handlers must be returned in an exposed `handler(bufnr)` function in a Lua module under 'lua/lsp/' with the name matching the LSP Server's name, for example 'lua_ls.lua' (or 'lua_ls/init.lua')"
+			)
+		end
+
+		if lsp_on_attach.handler then
+			local attached, handler = pcall(lsp_on_attach.handler, bufnr)
+			if not attached then
+				local err = handler
+				print("Error setting keymaps for " .. name .. ": " .. err)
+			end
+		end
+	end
+
+	local opts = { buffer = bufnr, noremap = true, silent = true }
+	local telescope = require("telescope.builtin")
+	local themes = require("telescope.themes")
+
+	vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+	vim.keymap.set("n", "<leader>vd", vim.diagnostic.open_float, opts)
+	vim.keymap.set({ "n", "v" }, "<leader>vca", vim.lsp.buf.code_action, opts)
+	vim.keymap.set({ "n", "v" }, "<A-.>", vim.lsp.buf.code_action, opts)
+	vim.keymap.set("n", "<F2>", vim.lsp.buf.rename, opts)
+	vim.keymap.set("n", "<leader>r", vim.lsp.buf.rename, opts)
+	vim.keymap.set({ "n", "i" }, "<C-h>", vim.lsp.buf.signature_help, opts)
+	-- TODO: Consolidate with telescope.lua mappings
+	vim.keymap.set("n", "gr", function()
+		telescope.lsp_references(themes.get_dropdown())
+	end, opts)
+	vim.keymap.set("n", "gd", function()
+		telescope.lsp_definitions(themes.get_dropdown())
+	end, opts)
+	vim.keymap.set("n", "gt", function()
+		telescope.lsp_type_definitions(themes.get_dropdown())
+	end, opts)
+	vim.keymap.set("n", "gi", function()
+		telescope.lsp_implementations(themes.get_cursor({ layout_config = { width = 0.5 } }))
+	end, opts)
+	vim.keymap.set("n", "<leader>o", function()
+		telescope.lsp_document_symbols(themes.get_ivy())
+	end, opts)
+	vim.keymap.set("n", "<leader>t", function()
+		telescope.lsp_workspace_symbols(themes.get_ivy())
+	end, opts)
+	vim.keymap.set("n", "<leader>pd", function()
+		telescope.diagnostics(themes.get_dropdown())
+	end, opts)
+	vim.keymap.set("n", "]d", function()
+		vim.diagnostic.goto_next({ float = { source = "if_many" } })
+	end, opts)
+	vim.keymap.set("n", "[d", function()
+		vim.diagnostic.goto_prev({ float = { source = "if_many" } })
+	end, opts)
+end
+
+-- If setup_handlers doesn't work as expected, manually loop instead
+--[[
+  local get_servers = require('mason-lspconfig').get_installed_servers
+
+  for _, server_name in ipairs(get_servers()) do
+    lspconfig[server_name].setup({
+      on_attach = lsp_attach,
+      capabilities = lsp_capabilities,
+    })
+  end
+--]]
+
+local ag = vim.api.nvim_create_augroup("format_on_write", {})
+vim.api.nvim_create_autocmd("BufWritePre", {
+	group = ag,
+	pattern = "*",
+	callback = function(_)
+		if vim.b.skip_format then
+			return
+		end
+		vim.cmd("lua vim.lsp.buf.format()")
+	end,
+})
+vim.api.nvim_create_user_command("Save", function()
+	vim.b.skip_format = true
+	vim.cmd("write")
+	vim.b.skip_format = false
+end, {})
+
+local lspconfig = require("lspconfig")
+require("mason-lspconfig").setup_handlers({
+	function(name)
+		local ok, config = pcall(require, "lsp." .. name)
+		if ok then
+			if type(config) ~= "table" or not config.config then
+				print("Error loading config for " .. name)
+				print(
+					"LSP specific configs must be returned in an exposed `config()` function (or `config` table) in a Lua module under 'lua/lsp/' with the name matching the LSP Server's name, for example 'lua_ls.lua' (or 'lua_ls/init.lua')"
+				)
+				print("Using default config")
+				ok = false
+			elseif type(config.config) == "function" then
+				ok, config = pcall(config.config)
+				if not ok then
+					local err = config
+					print("Error loading config for " .. name .. ": " .. err)
+					print("Using default config")
+				end
+			elseif type(config.config) == "table" then
+				config = config.config
+			else
+				print(
+					"Error loading config for "
+						.. name
+						.. ": config cannot be of type "
+						.. type(config.config)
+						.. "; it must be either a function returning a table, or a table itself"
+				)
+				print("Using default config")
+				ok = false
+			end
+		end
+
+		if not ok then
+			config = {}
+		end
+
+		if not config.on_attach then
+			config.on_attach = lsp_attach
+		end
+
+		if not config.capabilities then
+			config.capabilities = lsp_capabilities
+		end
+
+		lspconfig[name].setup(config)
+	end,
 })

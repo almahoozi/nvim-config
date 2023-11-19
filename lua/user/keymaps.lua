@@ -1,243 +1,131 @@
 local opts = { noremap = true, silent = true }
-local term_opts = { silent = true }
 
--- Shorten function names
-local keymap = vim.api.nvim_set_keymap
-
--- n = normal
-local nm = function(...)
-	keymap("n", ...)
-end
--- i = insert
-local im = function(...)
-	keymap("i", ...)
-end
--- v = visual
-local vm = function(...)
-	keymap("v", ...)
-end
--- t = terminal
-local tm = function(...)
-	keymap("t", ...)
-end
--- x = visual
-local xm = function(...)
-	keymap("x", ...)
-end
-
---Remap space as leader key
-keymap("", "<Space>", "<Nop>", opts)
-vim.g.mapleader = " "
-vim.g.maplocalleader = " "
-vim.g.VM_leader = "\\" -- Leader for Vim Multi Line plugin
-
---nm("<C-w><C-n><C-v>", ":vne<CR>", opts) -- Open vertical split
 -- Normal --
--- Open directory explorer
---nm("<leader>pv", ":Explore<cr>", opts)
-nm("<leader>pv", ":Oil<cr>", opts)
+vim.keymap.set("n", "<leader>pv", ":Oil<cr>", opts)
 
 -- Window navigation
-nm("<leader>h", "<C-w>h", opts)
-nm("<leader>j", "<C-w>j", opts)
-nm("<leader>k", "<C-w>k", opts)
-nm("<leader>l", "<C-w>l", opts)
-nm("<leader>wv", "<C-w>v", opts)
-nm("<leader>ws", "<C-w>s", opts)
+vim.keymap.set("n", "<leader>h", "<C-w>h", opts)
+vim.keymap.set("n", "<leader>j", "<C-w>j", opts)
+vim.keymap.set("n", "<leader>k", "<C-w>k", opts)
+vim.keymap.set("n", "<leader>l", "<C-w>l", opts)
+vim.keymap.set("n", "<leader>wv", "<C-w>v", opts)
+vim.keymap.set("n", "<leader>ws", "<C-w>s", opts)
 
--- Swap 0 and ^ (home and first non-blank character)
-nm("0", "^", opts)
-nm("^", "0", opts)
+-- Window resizing
+vim.keymap.set("n", "<A-Up>", ":resize +2<CR>", opts)
+vim.keymap.set("n", "<A-Down>", ":resize -2<CR>", opts)
+vim.keymap.set("n", "<A-->", ":vertical resize -1<CR>", opts) -- Mappped to something else
+vim.keymap.set("n", "<A-=>", ":vertical resize +2<CR>", opts) -- Mappped to something else
 
-nm("gg", "gg^", opts) -- Go to start of the first line
-nm("G", "G$", opts) -- Go to end of the last line
+-- Buffer navigation
+vim.keymap.set("n", "<S-l>", ":bn<CR>", opts)
+vim.keymap.set("n", "<S-h>", ":bp<CR>", opts)
+vim.keymap.set("n", "]q", ":cn<CR>zz", opts)
+vim.keymap.set("n", "[q", ":cp<CR>zz", opts)
 
--- Function navigation tailored for Go
--- TODO: Add only to buffers with filetype go
-nm("[[", "^?^func<CR>zz", opts) -- Go to the start of the previous function or method
-nm("]]", "/^func<CR>zz", opts) -- Go to the start of the next function or method
-nm("]f", "/^func\\s*\\w<CR>zz", opts) -- Go to the start of the next function
-nm("[f", "^?^func\\s*\\w<CR>zz", opts) -- Go to the start of the previous function
-nm("[m", "^?^func\\s*(<CR>zz", opts) -- Go to the start of the previous method
-nm("]m", "/^func\\s*(<CR>zz", opts) -- Go to the start of the next method
+-- Convenience positioning
+vim.keymap.set("n", "0", "^", opts)
+vim.keymap.set("n", "^", "0", opts)
 
--- Save and source file
-nm("<leader><leader>x", ":w<CR>:source %<CR>", opts)
-
--- Resize with arrows
-nm("<A-Up>", ":resize +2<CR>", opts)
-nm("<A-Down>", ":resize -2<CR>", opts)
-nm("<A-->", ":vertical resize -1<CR>", opts) -- Mappped to something else
-nm("<A-=>", ":vertical resize +2<CR>", opts) -- Mappped to something else
-
--- Navigate buffers
-nm("<S-l>", ":bnext<CR>", opts)
-nm("<S-h>", ":bprevious<CR>", opts)
+-- TODO: contradicting the above; this one is supposed to be for goto line, the above for go to end of buffer
+-- TODO: Need a way to have a zz for go to line, but not for go to end of buffer
+--vim.keymap.set({ "n", "v" }, "G", "Gzz^", opts)
+vim.keymap.set({ "n", "v" }, "gg", "gg^", opts)
+vim.keymap.set({ "n", "v" }, "G", "G$", opts)
+vim.keymap.set({ "n", "v" }, "<C-d>", "<C-d>zz", opts)
+vim.keymap.set({ "n", "v" }, "<C-u>", "<C-u>zz", opts)
+vim.keymap.set({ "n", "v" }, "<C-f>", "<C-f>zb", opts)
+vim.keymap.set({ "n", "v" }, "<C-b>", "<C-b>zt", opts)
+vim.keymap.set({ "n", "v" }, "n", "nzzzv", opts)
+vim.keymap.set({ "n", "v" }, "N", "Nzzzv", opts)
+vim.keymap.set({ "n", "v" }, "J", "mzJ`z", opts)
 
 -- Move line up and down and indent
-nm("<A-j>", ":move .+1<CR>==", opts)
-nm("<A-k>", ":move .-2<CR>==", opts)
+vim.keymap.set("n", "<A-j>", ":move .+1<CR>==", opts)
+vim.keymap.set("n", "<A-k>", ":move .-2<CR>==", opts)
 
-nm("J", "mzJ`z", opts) -- Join lines without moving cursor
-nm("<C-d>", "<C-d>zz", opts) -- Scroll down half a page keeping cursor in the middle
-nm("<C-u>", "<C-u>zz", opts) -- Scroll up half a page keeping cursor in the middle
-nm("<C-f>", "<C-f>zb", opts) -- Scroll down a page keeping cursor at the top
-nm("<C-b>", "<C-b>zt", opts) -- Scroll up a page keeping cursor at the bottom
-nm("n", "nzzzv", opts) -- Go to next match and center it, unfolding if needed
-nm("N", "Nzzzv", opts) -- Go to previous match and center it, unfolding if needed
+-- Black hole register ops
+vim.keymap.set("n", "<leader>d", '"_d', opts)
+vim.keymap.set("n", "<leader>x", '"_x', opts)
 
--- Yank to system clipboard
-nm("<leader>y", '"+y', opts)
-nm("<leader>Y", '"+Y', opts)
+-- TODO: This is wrong
+vim.keymap.set("n", "<leader>f", "lua vim.lsp.buf.format", opts)
 
--- Delete without saving to register
-nm("<leader>d", '"_d', opts)
-nm("<leader>x", '"_x', opts)
-
-nm("<leader>f", "lua vim.lsp.buf.format", opts) -- Format file
-
--- Center after goto line and go to beginning of line
-nm("G", "Gzz0", opts)
-
-nm("<leader>/", "<Plug>NERDCommenterToggle", opts) -- Toggle comment
-
--- search for word under cursor
-nm("<C-/>", "/<C-r><C-w><CR>zz", opts)
-nm("<C-?>", "?<C-r><C-w><CR>zz", opts)
+vim.keymap.set("n", "<leader>/", "<Plug>NERDCommenterToggle", opts)
 
 -- search and replace word under cursor
-nm("<leader>s", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]], opts)
+vim.keymap.set("n", "<leader>s", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]], opts)
 
-nm("]q", ":cnext<CR>zz", opts) -- Go to next quickfix item
-nm("[q", ":cprev<CR>zz", opts) -- Go to previous quickfix item
---nm("<cr>", "ciw", opts)
---nm("<S-cr>", "ce", opts)
--- Want to c to the next subword (separated by - or _ or camelCase)
---nm("<C-cr>", "cgn", opts)
+-- TODO: Want to define text objects for: subwords, any quotes, any brackets
 
 -- Insert --
--- Press jk or kj fast to exit insert mode
-im("jk", "<ESC>", opts)
-im("kj", "<ESC>", opts)
--- Press jj or kk fast to exit insert mode (and go down or up 2 lines)
-im("jj", "<ESC><Down><Down>", opts)
-im("kk", "<ESC><Up><Up>", opts)
--- Press hhh or lll fast to exit insert mode (and go left or right 3 times)
-im("hhh", "<ESC><Left><Left><Left>", opts)
-im("lll", "<ESC><Right><Right><Right>", opts)
+-- Exit insert mode
+vim.keymap.set("i", "jk", "<ESC>", opts)
+vim.keymap.set("i", "kj", "<ESC>", opts)
+vim.keymap.set("i", "jjj", "<ESC>jjj", opts)
+vim.keymap.set("i", "kkk", "<ESC>kkk", opts)
+vim.keymap.set("i", "hhh", "<ESC>hhh", opts)
+vim.keymap.set("i", "lll", "<ESC>lll", opts)
+vim.keymap.set("i", "www", "<ESC>www", opts)
+vim.keymap.set("i", "bbb", "<ESC>bbb", opts)
 
--- Press ww to exit insert mode and go to next word
-im("ww", "<ESC>ww", opts)
-
--- Press zt to exit insert mode move to top of screen, remaining in insert mode
--- Press zb to exit insert mode move to bottom of screen, remaining in insert mode
-im("zt", "<ESC>zta", opts)
-im("zb", "<ESC>zba", opts)
-
--- Move line up and down and indent
-im("<A-Down>", "<esc>:move .+1<CR>==a", opts)
-im("<A-Up>", "<esc>:move .-2<CR>==a", opts)
-
--- Save without exiting insert mode
-im(":w<CR>", "<ESC>:w<CR>a", opts)
--- Generate and write a UUID to the z register
---im("$guid", "<cmd>let @z = system('uuidgen')<CR><cmd>put z<CR>", opts)--
-
-im("<C-h>", "<C-o><C-h>", opts)
+-- Use normal mappings in insert mode
+vim.keymap.set("i", "zt", "<C-o>zt", opts)
+vim.keymap.set("i", "zb", "<C-o>zb", opts)
+vim.keymap.set("i", "<A-j>", "<C-o>:move .+1<CR><C-o>==", opts)
+vim.keymap.set("i", "<A-k>", "<C-o>:move .-2<CR><C-o>==", opts)
+vim.keymap.set("i", ":w<CR>", "<C-o>:w<CR>", opts)
+vim.keymap.set("i", "<C-h>", "<C-o><C-h>", opts)
 
 -- Visual --
 -- Stay in visual mode after indenting
-vm("<", "<gv", opts)
-vm(">", ">gv", opts)
+vim.keymap.set("v", "<", "<gv", opts)
+vim.keymap.set("v", ">", ">gv", opts)
 
 -- Move text up and down
-vm("<A-j>", ":move '>+1<CR>gv=gv", opts)
-vm("<A-k>", ":move '<-2<CR>gv=gv", opts)
+vim.keymap.set("v", "<A-j>", ":move '>+1<CR>gv=gv", opts)
+vim.keymap.set("v", "<A-k>", ":move '<-2<CR>gv=gv", opts)
 
--- Keep the current register after pasting
-vm("p", '"_dP', opts)
+-- Black hole register ops
+vim.keymap.set("v", "p", '"_dP', opts)
+vim.keymap.set("v", "P", '"_dP', opts)
+vim.keymap.set("v", "<leader>d", '"_d', opts)
+vim.keymap.set("v", "<leader>x", '"_x', opts)
 
--- Yank to system clipboard
-vm("<leader>y", '"+y', opts)
-vm("<leader>Y", '"+Y', opts)
+vim.keymap.set({ "n", "v" }, "<leader>/", "<Plug>NERDCommenterToggle", opts) -- Toggle comment
 
--- Delete without saving to register
-vm("<leader>d", '"_d', opts)
-vm("<leader>x", '"_x', opts)
-
--- Toggle comment
-vm("<leader>/", "<Plug>NERDCommenterToggle", opts) -- Toggle comment
-
-vm("[[", "^?^func<CR>zz", opts) -- Go to the start of the previous function or method
-vm("]]", "/^func<CR>zz", opts) -- Go to the start of the next function or method
-vm("]f", "/^func\\s*\\w<CR>zz", opts) -- Go to the start of the next function
-vm("[f", "^?^func\\s*\\w<CR>zz", opts) -- Go to the start of the previous function
-vm("[m", "^?^func\\s*(<CR>zz", opts) -- Go to the start of the previous method
-vm("]m", "/^func\\s*(<CR>zz", opts) -- Go to the start of the next method
-
--- Visual Block --
--- Move text up and down
-xm("<A-j>", ":move '>+1<CR>gv=gv", opts)
-xm("<A-k>", ":move '<-2<CR>gv=gv", opts)
-
--- Paste, deleting selection, keeping register
-xm("p", '"_dP', opts)
-
--- Yank into system clipboard
-xm("<leader>y", '"+y', opts)
-xm("<leader>Y", '"+Y', opts)
-
--- Delete without saving to register
-xm("<leader>d", '"_d', opts)
-xm("<leader>x", '"_x', opts)
-
--- Toggle comment
-xm("<leader>/", "<Plug>NERDCommenterToggle", opts) -- Toggle comment
 -- Terminal --
--- Better terminal navigation
--- tm("<C-h>", "<C-\\><C-N><C-w>h", term_opts)
--- tm("<C-j>", "<C-\\><C-N><C-w>j", term_opts)
--- tm("<C-k>", "<C-\\><C-N><C-w>k", term_opts)
--- tm("<C-l>", "<C-\\><C-N><C-w>l", term_opts)
-
---vim.keymap.set({ "n", "i", "t" }, "<C-`>", '<cmd>lua require"toggleterm".smart_toggle()<CR>', term_opts)
-vim.keymap.set(
-	{ "n", "i", "t" },
-	"<C-`>",
-	'<cmd>exe v:count1 . "ToggleTerm size=10 direction=horizontal"<cr>',
-	term_opts
-)
+--vim.keymap.set({ "n", "i", "t" }, "<C-`>", '<cmd>lua require"toggleterm".smart_toggle()<CR>', opts)
+-- TODO: Find a better way to do this; if no number provided and more than one terminal exists then toggle all
+-- TODO: Don't really need this many terminals; one solid one is enough
+vim.keymap.set({ "n", "t" }, "<leader>`", "<cmd>ToggleTermToggleAll<cr>", opts)
+vim.keymap.set({ "n", "i", "t" }, "<C-`>", '<cmd>exe v:count1 . "ToggleTerm size=10 direction=horizontal"<cr>', opts)
 vim.keymap.set(
 	{ "n", "i", "t" },
 	"<C-Right><C-`>",
 	'<cmd>exe v:count1 . "ToggleTerm size=50 direction=vertical"<cr>',
-	term_opts
+	opts
 )
 
--- Find a better way to do this; if no number provided and more than one terminal exists then toggle all
-vim.keymap.set({ "n", "t" }, "<leader>`", "<cmd>ToggleTermToggleAll<cr>", term_opts)
-tm("<esc>", [[<C-\><C-n>]], term_opts)
-tm("<C-h>", [[<C-\><C-n><C-w>h]], term_opts)
-tm("<C-j>", [[<C-\><C-n><C-w>j]], term_opts)
-tm("<C-k>", [[<C-\><C-n><C-w>k]], term_opts)
-tm("<C-l>", [[<C-\><C-n><C-w>l]], term_opts)
-tm("<C-w>", [[<C-\><C-n><C-w>w]], term_opts)
+-- Get out of terminal with muscle memory
+vim.keymap.set("t", "<C-w><C-h>", "<C-\\><C-n><C-w>h", opts)
+vim.keymap.set("t", "<C-w><C-j>", "<C-\\><C-n><C-w>j", opts)
+vim.keymap.set("t", "<C-w><C-k>", "<C-\\><C-n><C-w>k", opts)
+vim.keymap.set("t", "<C-w><C-l>", "<C-\\><C-n><C-w>l", opts)
+vim.keymap.set("t", "<C-w><C-w>", "<C-\\><C-n><C-w>w", opts)
+vim.keymap.set("t", "<C-w>h", "<C-\\><C-n><C-w>h", opts)
+vim.keymap.set("t", "<C-w>j", "<C-\\><C-n><C-w>j", opts)
+vim.keymap.set("t", "<C-w>k", "<C-\\><C-n><C-w>k", opts)
+vim.keymap.set("t", "<C-w>l", "<C-\\><C-n><C-w>l", opts)
+vim.keymap.set("t", "<C-w>w", "<C-\\><C-n><C-w>w", opts)
 
---vim.keymap.set("n", "<C-k>", "<cmd>cnext<CR>zz")
---vim.keymap.set("n", "<C-j>", "<cmd>cprev<CR>zz")
---vim.keymap.set("n", "<leader>k", "<cmd>lnext<CR>zz")
---vim.keymap.set("n", "<leader>j", "<cmd>lprev<CR>zz")
-
--- TODO: Unset hlsearch on any keypress other than n/N
-
--- let &hlsearch = 0
-
--- Dap
-nm("<F5>", "<cmd>lua require'dap'.continue()<CR>", opts)
-nm("<F10>", "<cmd>lua require'dap'.step_over()<CR>", opts)
-nm("<F11>", "<cmd>lua require'dap'.step_into()<CR>", opts)
-nm("<F12>", "<cmd>lua require'dap'.step_out()<CR>", opts)
-nm("<leader>b", "<cmd>lua require'dap'.toggle_breakpoint()<CR>", opts)
-nm("<leader>B", "<cmd>lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>", opts)
-nm("<leader>dt", "<cmd>lua require('dap-go').debug_test()<CR>", opts)
-nm("<leader>dlt", "<cmd>lua require('dap-go').debug_last_test()<CR>", opts)
+-- Exit terminal mode
+vim.keymap.set("t", "<esc>", "<C-\\><C-n>", opts)
+vim.keymap.set("t", "jk", "<C-\\><C-n>", opts)
+vim.keymap.set("t", "kj", "<C-\\><C-n>", opts)
+vim.keymap.set("t", "jjj", "<C-\\><C-n>jjj", opts)
+vim.keymap.set("t", "kkk", "<C-\\><C-n>kkk", opts)
+vim.keymap.set("t", "hhh", "<C-\\><C-n>hhh", opts)
+vim.keymap.set("t", "lll", "<C-\\><C-n>lll", opts)
+vim.keymap.set("t", "www", "<C-\\><C-n>www", opts)
+vim.keymap.set("t", "bbb", "<C-\\><C-n>bbb", opts)
