@@ -59,7 +59,12 @@ return packer.startup(function(use)
 
 	use({ "kyazdani42/nvim-web-devicons" })
 
-	use({ "unblevable/quick-scope" })
+	use({
+		"unblevable/quick-scope",
+		config = function()
+			vim.g.qs_highlight_on_keys = { "f", "F", "t", "T" }
+		end,
+	})
 	use({ "lukas-reineke/indent-blankline.nvim" })
 	use({ "akinsho/bufferline.nvim" })
 	use({ "kyazdani42/nvim-tree.lua" })
@@ -70,7 +75,12 @@ return packer.startup(function(use)
 	use({ "mbbill/undotree" })
 	use({ "tpope/vim-fugitive" })
 
-	use({ "mg979/vim-visual-multi" })
+	use({
+		"mg979/vim-visual-multi",
+		config = function()
+			vim.g.VM_leader = "\\"
+		end,
+	})
 
 	use({ "lewis6991/gitsigns.nvim" })
 	use({ "ruifm/gitlinker.nvim" })
@@ -103,7 +113,16 @@ return packer.startup(function(use)
 
 	use({ "RRethy/vim-illuminate" })
 
-	use({ "github/copilot.vim" })
+	use({
+		"github/copilot.vim",
+		config = function()
+			vim.g.copilot_filetypes = {
+				[""] = true,
+				markdown = true,
+				yaml = true,
+			}
+		end,
+	})
 	use({ "tpope/vim-surround" })
 	use({
 		"airblade/vim-gitgutter",
@@ -124,8 +143,27 @@ return packer.startup(function(use)
 	use({ "theHamsta/nvim-dap-virtual-text" })
 
 	use({ "stevearc/oil.nvim" })
+	use({
+		"stevearc/aerial.nvim",
+		disable = true,
+	})
+	use({
+		disable = true,
+		"stevearc/conform.nvim",
+		config = function()
+			require("conform").setup()
+		end,
+	})
+	use({
+		"stevearc/dressing.nvim",
+		config = function()
+			require("dressing").setup()
+		end,
+	})
 
 	use({ "rest-nvim/rest.nvim" })
+
+	use({ "nvim-pack/nvim-spectre" })
 
 	if PACKER_BOOTSTRAP then
 		require("packer").sync()

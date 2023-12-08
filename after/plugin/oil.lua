@@ -10,7 +10,9 @@ require("oil").setup({
 	view_options = {
 		show_hidden = true,
 	},
+	--delete_to_trash = true,
 	keymaps = {
 		["<Esc>"] = "actions.close",
+		["<Space>"] = "actions.preview",
 	},
 })

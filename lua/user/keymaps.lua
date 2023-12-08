@@ -1,7 +1,10 @@
 local opts = { noremap = true, silent = true }
+local function optsWith(args)
+	return vim.tbl_extend("force", opts, args)
+end
 
 -- Normal --
-vim.keymap.set("n", "<leader>pv", ":Oil<cr>", opts)
+vim.keymap.set("n", "-", ":Oil<cr>", opts)
 
 -- Window navigation
 vim.keymap.set("n", "<leader>h", "<C-w>h", opts)
@@ -26,12 +29,15 @@ vim.keymap.set("n", "[q", ":cp<CR>zz", opts)
 -- Convenience positioning
 vim.keymap.set("n", "0", "^", opts)
 vim.keymap.set("n", "^", "0", opts)
-
--- TODO: contradicting the above; this one is supposed to be for goto line, the above for go to end of buffer
--- TODO: Need a way to have a zz for go to line, but not for go to end of buffer
---vim.keymap.set({ "n", "v" }, "G", "Gzz^", opts)
 vim.keymap.set({ "n", "v" }, "gg", "gg^", opts)
-vim.keymap.set({ "n", "v" }, "G", "G$", opts)
+vim.keymap.set({ "n", "v" }, "G", function()
+	if vim.v.count == 0 then
+		return "G$"
+	else
+		return "Gzz"
+	end
+end, optsWith({ expr = true }))
+
 vim.keymap.set({ "n", "v" }, "<C-d>", "<C-d>zz", opts)
 vim.keymap.set({ "n", "v" }, "<C-u>", "<C-u>zz", opts)
 vim.keymap.set({ "n", "v" }, "<C-f>", "<C-f>zb", opts)
@@ -48,13 +54,9 @@ vim.keymap.set("n", "<A-k>", ":move .-2<CR>==", opts)
 vim.keymap.set("n", "<leader>d", '"_d', opts)
 vim.keymap.set("n", "<leader>x", '"_x', opts)
 
--- TODO: This is wrong
-vim.keymap.set("n", "<leader>f", "lua vim.lsp.buf.format", opts)
+vim.keymap.set("n", "<leader>f", vim.lsp.buf.format, opts)
 
 vim.keymap.set("n", "<leader>/", "<Plug>NERDCommenterToggle", opts)
-
--- search and replace word under cursor
-vim.keymap.set("n", "<leader>s", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]], opts)
 
 -- TODO: Want to define text objects for: subwords, any quotes, any brackets
 
@@ -95,17 +97,12 @@ vim.keymap.set("v", "<leader>x", '"_x', opts)
 vim.keymap.set({ "n", "v" }, "<leader>/", "<Plug>NERDCommenterToggle", opts) -- Toggle comment
 
 -- Terminal --
---vim.keymap.set({ "n", "i", "t" }, "<C-`>", '<cmd>lua require"toggleterm".smart_toggle()<CR>', opts)
+--vim.keymap.set({ "n", "i", "t" }, "<C-`>", ':lua require"toggleterm".smart_toggle()<CR>', opts)
 -- TODO: Find a better way to do this; if no number provided and more than one terminal exists then toggle all
 -- TODO: Don't really need this many terminals; one solid one is enough
-vim.keymap.set({ "n", "t" }, "<leader>`", "<cmd>ToggleTermToggleAll<cr>", opts)
-vim.keymap.set({ "n", "i", "t" }, "<C-`>", '<cmd>exe v:count1 . "ToggleTerm size=10 direction=horizontal"<cr>', opts)
-vim.keymap.set(
-	{ "n", "i", "t" },
-	"<C-Right><C-`>",
-	'<cmd>exe v:count1 . "ToggleTerm size=50 direction=vertical"<cr>',
-	opts
-)
+vim.keymap.set({ "n", "t" }, "<leader>`", ":ToggleTermToggleAll<cr>", opts)
+vim.keymap.set({ "n", "i", "t" }, "<C-`>", ':exe v:count1 . "ToggleTerm size=10 direction=horizontal"<cr>', opts)
+vim.keymap.set({ "n", "i", "t" }, "<C-Right><C-`>", ':exe v:count1 . "ToggleTerm size=50 direction=vertical"<cr>', opts)
 
 -- Get out of terminal with muscle memory
 vim.keymap.set("t", "<C-w><C-h>", "<C-\\><C-n><C-w>h", opts)

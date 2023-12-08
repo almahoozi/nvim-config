@@ -4,7 +4,13 @@ require("dracula").setup({
 	italic_comment = true,
 	overrides = function(colors)
 		local highlights = require("dracula.groups").setup({ colors = colors })
-		return {
+		-- Need to dynamically find all BufferLineDevIcon* groups (excluding *Selected and *Inactive)
+		-- and set their fg to colors.selection
+		-- We can do this in an autocommand on BufEnter and get the group names with
+		-- :so $VIMRUNTIME/syntax/hitest.vim
+		-- We need to reappply the theme using dracula.load() after the autocommand
+
+		local overrides = {
 			LspReferenceText = { bg = colors.selection },
 			LspReferenceRead = { bg = colors.selection },
 			LspReferenceWrite = { bg = colors.selection },
@@ -28,7 +34,13 @@ require("dracula").setup({
 			BufferLineDevIconGitIgnore = { fg = colors.selection },
 			BufferLineDevIconC = { fg = colors.selection },
 			BufferLineDevIconCpp = { fg = colors.selection },
+			BufferLineDevIconMd = { fg = colors.selection },
+			BufferLineDevIconTerraform = { fg = colors.selection },
+			BufferLineDevIconZsh = { fg = colors.selection },
+			BufferLineDevIconMakefile = { fg = colors.selection },
 		}
+
+		return overrides
 	end,
 })
 

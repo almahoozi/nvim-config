@@ -12,13 +12,13 @@ require("gitsigns").setup({
 		local nm = function(...)
 			vim.api.nvim_buf_set_keymap(bufnr, "n", ...)
 		end
-		nm("]c", '<cmd>lua require"gitsigns".next_hunk()<CR>', opts)
-		nm("[c", '<cmd>lua require"gitsigns".prev_hunk()<CR>', opts)
-		--nm("<leader>ggb", '<cmd>lua require"gitsigns".blame_line()<CR>', opts)
-		--nm("<leader>q", '<cmd>lua require"gitsigns".reset_hunk()<CR>', opts)
-		--nm("<leader>Q", '<cmd>lua require"gitsigns".reset_buffer()<CR>', opts)
-		nm("<leader>gp", '<cmd>lua require"gitsigns".preview_hunk()<CR>', opts)
-		nm("<leader>gb", '<cmd>lua require"gitsigns".blame_line({full=true})<CR>', opts)
+		nm("]c", ':lua require"gitsigns".next_hunk()<CR>', opts)
+		nm("[c", ':lua require"gitsigns".prev_hunk()<CR>', opts)
+		--nm("<leader>ggb", ':lua require"gitsigns".blame_line()<CR>', opts)
+		--nm("<leader>q", ':lua require"gitsigns".reset_hunk()<CR>', opts)
+		--nm("<leader>Q", ':lua require"gitsigns".reset_buffer()<CR>', opts)
+		nm("<leader>gp", ':lua require"gitsigns".preview_hunk()<CR>', opts)
+		nm("<leader>gb", ':lua require"gitsigns".blame_line({full=true})<CR>', opts)
 	end,
 })
 
