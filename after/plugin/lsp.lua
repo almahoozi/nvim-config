@@ -34,6 +34,7 @@ require("mason-lspconfig").setup({
 	automatic_installation = true,
 	ensure_installed = {
 		-- TODO: Source list of installations from their respective configuration dirs
+		"asm_lsp",
 		"bashls",
 		--"shfmt",
 
@@ -128,6 +129,7 @@ cmp.setup({
 	},
 	window = {
 		documentation = cmp.config.window.bordered(),
+		completion = cmp.config.window.bordered(),
 	},
 	formatting = {
 		fields = { "kind", "abbr", "menu" },

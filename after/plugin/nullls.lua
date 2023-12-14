@@ -14,6 +14,7 @@ require("null-ls").setup({
 		fmt.goimports,
 		fmt.rustfmt,
 		fmt.lua_format,
+		fmt.asmfmt,
 		diag.golangci_lint,
 		diag.actionlint,
 		diag.checkmake,
