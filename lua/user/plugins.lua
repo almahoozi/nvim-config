@@ -166,6 +166,17 @@ return packer.startup(function(use)
 
 	use({ "nvim-pack/nvim-spectre" })
 
+	use({
+		"almahoozi/repl.nvim",
+		config = function()
+			require("repl").setup({
+				Mappings = {
+					Run = { "<leader><cr>" },
+				},
+			})
+		end,
+	})
+
 	if PACKER_BOOTSTRAP then
 		require("packer").sync()
 	end

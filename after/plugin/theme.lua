@@ -38,6 +38,7 @@ require("dracula").setup({
 			BufferLineDevIconTerraform = { fg = colors.selection },
 			BufferLineDevIconZsh = { fg = colors.selection },
 			BufferLineDevIconMakefile = { fg = colors.selection },
+			BufferLineDevIconLicense = { fg = colors.selection },
 		}
 
 		return overrides
