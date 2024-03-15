@@ -31,6 +31,7 @@ vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 
 vim.opt.cursorline = true
+
 vim.opt.linebreak = true
 vim.opt.showbreak = "↳ "
 vim.opt.colorcolumn = "80"
@@ -49,12 +50,33 @@ vim.opt.guicursor = "i:blinkon1"
 vim.opt.whichwrap = "bs<>[]hl"
 vim.opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions,options"
 
---[[
 vim.opt.mouse = "" -- disallow the mouse to be used in neovim
---]]
+
+-- The tabs take over indent line, and they don't even show within the line, just before
+--vim.opt.list = false
+vim.opt.listchars = {
+	tab = "▸ ",
+	trail = "•",
+}
 
 vim.opt.shortmess:append("mrc")
 vim.opt.iskeyword:append("-")
 
 -- TODO: Is 'remove' valid? This is a string and afaik `remove` only operates on tables
 vim.opt.runtimepath:remove("/usr/share/vim/vimfiles") -- separate vim plugins from neovim in case vim still in use
+
+vim.opt.langmap:append("§`")
+vim.opt.langmap:append("±~")
+-- "translate" keys in normal mode for different languages
+-- Note this isn't perfect but allows the majority of single character keymaps
+-- to work without having to switch to a different keyboard layout between
+-- normal and insert mode. Multicharacter keymaps are not supported sadly.
+-- Nor is this useful for command mode.
+for _, lang in pairs({ "ar" }) do
+	local ok, _ = pcall(function()
+		require("user.langmap_" .. lang .. "_options")
+	end)
+	if not ok then
+		print("No langmap options found for " .. lang)
+	end
+end

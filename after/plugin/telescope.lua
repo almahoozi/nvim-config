@@ -4,9 +4,11 @@ local telescope = require("telescope")
 telescope.load_extension("media_files")
 telescope.load_extension("fzf")
 telescope.setup({
-	extensions = {
-		media_files = {
-			filetypes = { "png", "jpg", "jpeg", "webp" },
+	extensions = { media_files = { filetypes = { "png", "jpg", "jpeg", "webp" } } },
+	defaults = {
+		mappings = {
+			i = { ["A-/"] = "to_fuzzy_refine" },
+			n = { ["/"] = "to_fuzzy_refine" },
 		},
 	},
 })
@@ -25,3 +27,11 @@ vim.keymap.set("n", "<leader>pb", builtin.buffers, {})
 vim.keymap.set("n", "<leader>po", builtin.oldfiles, {})
 
 vim.keymap.set("n", "<leader>pm", telescope.extensions.media_files.media_files, {})
+vim.keymap.set("n", "<leader>p", builtin.registers, {})
+
+vim.keymap.set("n", "<C-/>", function()
+	builtin.current_buffer_fuzzy_find(require("telescope.themes").get_dropdown({
+		winblend = 10,
+		previewer = false,
+	}))
+end, {})

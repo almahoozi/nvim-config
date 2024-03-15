@@ -14,7 +14,12 @@ if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
 	print("Installing packer close and reopen Neovim...")
 	vim.cmd.packadd("packer.nvim")
 	if vim.fn.empty(vim.fn.glob(vim.fn.stdpath("config") .. ".packer-plugins")) > 0 then
-		vim.fn.system({ "ln", "-s", packer_path, vim.fn.stdpath("config") .. "/.packer-plugins" })
+		vim.fn.system({
+			"ln",
+			"-s",
+			packer_path,
+			vim.fn.stdpath("config") .. "/.packer-plugins",
+		})
 	end
 end
 
@@ -68,7 +73,7 @@ return packer.startup(function(use)
 	})
 	use({ "lukas-reineke/indent-blankline.nvim" })
 	use({ "akinsho/bufferline.nvim" })
-	use({ "kyazdani42/nvim-tree.lua" })
+	use({ "kyazdani42/nvim-tree.lua", disable = true })
 	use({ "windwp/nvim-autopairs" })
 	use({ "p00f/nvim-ts-rainbow" })
 
@@ -76,12 +81,7 @@ return packer.startup(function(use)
 	use({ "mbbill/undotree" })
 	use({ "tpope/vim-fugitive" })
 
-	use({
-		"mg979/vim-visual-multi",
-		config = function()
-			vim.g.VM_leader = "\\"
-		end,
-	})
+	use({ "mg979/vim-visual-multi" })
 
 	use({ "lewis6991/gitsigns.nvim" })
 	use({ "ruifm/gitlinker.nvim" })
@@ -98,7 +98,6 @@ return packer.startup(function(use)
 	use({ "ahmedkhalf/project.nvim" })
 	use({ "lewis6991/impatient.nvim" })
 	use({ "goolord/alpha-nvim" })
-	-- use({ "folke/which-key.nvim" })
 
 	use({ "williamboman/mason.nvim", run = "MasonUpdate" })
 	use({ "williamboman/mason-lspconfig.nvim" })
@@ -125,18 +124,11 @@ return packer.startup(function(use)
 		end,
 	})
 	use({ "tpope/vim-surround" })
-	use({
-		"airblade/vim-gitgutter",
-		disable = true,
-	})
+	use({ "airblade/vim-gitgutter", disable = true })
 	use({ "vim-airline/vim-airline" })
 	use({ "scrooloose/nerdcommenter" })
-	use({ "Djancyp/better-comments.nvim" })
 	use({ "majutsushi/tagbar" })
-	use({
-		"kdheepak/lazygit.nvim",
-		cmd = "LazyGit",
-	})
+	use({ "kdheepak/lazygit.nvim", cmd = "LazyGit" })
 	use({ "rmagatti/auto-session" })
 
 	use({ "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } })
@@ -146,10 +138,13 @@ return packer.startup(function(use)
 	use({ "stevearc/oil.nvim" })
 	use({
 		"stevearc/aerial.nvim",
-		disable = true,
+		--disable = true,
+		config = function()
+			require("aerial").setup()
+		end,
 	})
 	use({
-		disable = true,
+		--disable = true,
 		"stevearc/conform.nvim",
 		config = function()
 			require("conform").setup()
@@ -167,13 +162,50 @@ return packer.startup(function(use)
 	use({ "nvim-pack/nvim-spectre" })
 
 	use({
-		"almahoozi/repl.nvim",
+		"j-hui/fidget.nvim",
+		config = function()
+			require("fidget").setup({})
+		end,
+	})
+
+	-- use({ "folke/which-key.nvim" })
+	-- use({ "folke/zen-mode.nvim" })
+	--use({ "folke/neodev.nvim" })
+	use({
+		"folke/todo-comments.nvim",
+		event = "BufEnter",
+		config = function()
+			require("todo-comments").setup({
+				signs = false,
+			})
+		end,
+	})
+
+	use({
+		"echasnovski/mini.nvim",
+		config = function()
+			require("mini.ai").setup({ n_lines = 500 })
+			require("mini.surround").setup()
+		end,
+	})
+
+	use({
+		"~/Documents/Source/personal/nvim/repl.nvim",
+		-- "almahoozi/repl.nvim",
 		config = function()
 			require("repl").setup({
-				Mappings = {
-					Run = { "<leader><cr>" },
-				},
+				Debug = true,
+				Mappings = { Run = { "<leader><cr>" } },
 			})
+		end,
+	})
+	use({
+		"~/Documents/Source/personal/nvim/notes.nvim",
+		-- "almahoozi/notes.nvim",
+		config = function()
+			local notes = require("notes")
+			notes.setup()
+			vim.keymap.set("n", "<leader>n", notes.open_global, { noremap = true, silent = true })
 		end,
 	})
 

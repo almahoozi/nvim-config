@@ -21,7 +21,7 @@ require("dracula").setup({
 			QuickScopePrimary = { fg = highlights.Function.fg, standout = true },
 			QuickScopeSecondary = { fg = highlights.Define.fg, standout = true },
 			TestPassed = { fg = colors.green },
-			Visual = { bg = "#444444" },
+			Visual = { bg = "#993366" },
 			IndentBlanklineChar = { fg = colors.selection },
 			IblScope = { fg = colors.white },
 			BufferLineDevIconGo = { fg = colors.selection },
@@ -29,6 +29,7 @@ require("dracula").setup({
 			BufferLineDevIconDefault = { fg = colors.selection },
 			BufferLineDevIconEnv = { fg = colors.selection },
 			BufferLineDevIconYml = { fg = colors.selection },
+			BufferLineDevIconYaml = { fg = colors.selection },
 			BufferLineDevIconJson = { fg = colors.selection },
 			BufferLineDevIconJs = { fg = colors.selection },
 			BufferLineDevIconGitIgnore = { fg = colors.selection },
@@ -39,6 +40,10 @@ require("dracula").setup({
 			BufferLineDevIconZsh = { fg = colors.selection },
 			BufferLineDevIconMakefile = { fg = colors.selection },
 			BufferLineDevIconLicense = { fg = colors.selection },
+			BufferLineDevIconHtml = { fg = colors.selection },
+			BufferLineDevIconApplescript = { fg = colors.selection },
+			BufferLineDevIconTempl = { fg = colors.selection },
+			BufferLineDevIconSql = { fg = colors.selection },
 		}
 
 		return overrides

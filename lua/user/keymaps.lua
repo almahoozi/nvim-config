@@ -58,8 +58,6 @@ vim.keymap.set("n", "<leader>f", vim.lsp.buf.format, opts)
 
 vim.keymap.set("n", "<leader>/", "<Plug>NERDCommenterToggle", opts)
 
--- TODO: Want to define text objects for: subwords, any quotes, any brackets
-
 -- Insert --
 -- Exit insert mode
 vim.keymap.set("i", "jk", "<ESC>", opts)

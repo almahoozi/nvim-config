@@ -1,9 +1,7 @@
 -- https://vonheikemen.github.io/devlog/tools/setup-nvim-lspconfig-plus-nvim-cmp/#snippets
 -- https://github.com/VonHeikemen/lsp-zero.nvim/blob/v2.x/doc/md/lsp.md#you-might-not-need-lsp-zero
-
 -- TODO: Configure DAP, Linting, Formattings as well
 -- TODO: Do what Null-LS does since it is deprecated
-
 -- Use aucmd if not using mason-lspconfig's setup_handlers callback
 --[[
 vim.api.nvim_create_autocmd("LspAttach", {
@@ -28,54 +26,38 @@ vim.api.nvim_create_autocmd("LspAttach", {
 	end,
 })
 --]]
-
 require("mason").setup()
 require("mason-lspconfig").setup({
 	automatic_installation = true,
 	ensure_installed = {
 		-- TODO: Source list of installations from their respective configuration dirs
 		"asm_lsp",
-		"bashls",
-		--"shfmt",
-
-		--"black",
-		"pyright",
-
-		--"delve",
-		--"goimports",
+		"bashls", -- "shfmt",
+		-- "black",
+		"pyright", -- "delve",
+		-- "goimports",
 		"golangci_lint_ls",
 		"gopls",
 		"templ",
-
 		"docker_compose_language_service",
-		--"dockerfilels",
+		-- "dockerfilels",
 
 		"cssls",
 		"eslint",
 		"html",
+		"htmx",
 		"tsserver",
-
 		"jsonls",
 		"taplo",
 		"yamlls",
-
-		"lua_ls",
-		--"stylua",
-
-		--"markdownlint",
-		"marksman",
-
-		--"prettierd",
-
-		"rust_analyzer",
-
-		--"sql_formatter",
-		--"sqlfmt",
+		"lua_ls", -- "stylua",
+		-- "markdownlint",
+		"marksman", -- "prettierd",
+		"rust_analyzer", -- "sql_formatter",
+		-- "sqlfmt",
 		"sqlls",
-
 		"terraformls",
 		"tflint",
-
 		"vimls",
 	},
 })
@@ -190,11 +172,7 @@ cmp.setup({
 })
 
 local sign = function(opts)
-	vim.fn.sign_define(opts.name, {
-		texthl = opts.name,
-		text = opts.text,
-		numhl = "",
-	})
+	vim.fn.sign_define(opts.name, { texthl = opts.name, text = opts.text, numhl = "" })
 end
 
 sign({ name = "DiagnosticSignError", text = "" })
@@ -203,15 +181,10 @@ sign({ name = "DiagnosticSignHint", text = "" })
 sign({ name = "DiagnosticSignInfo", text = "" })
 
 vim.diagnostic.config({
-	virtual_text = {
-		spacing = 4,
-		prefix = "",
-	},
+	virtual_text = { spacing = 4, prefix = "" },
 	update_in_insert = true,
 	severity_sort = true,
-	float = {
-		border = "rounded",
-	},
+	float = { border = "rounded" },
 })
 
 -- Round them corners
@@ -261,7 +234,9 @@ local lsp_attach = function(client, bufnr)
 		telescope.lsp_type_definitions(themes.get_dropdown())
 	end, opts)
 	vim.keymap.set("n", "gi", function()
-		telescope.lsp_implementations(themes.get_cursor({ layout_config = { width = 0.5 } }))
+		telescope.lsp_implementations(themes.get_cursor({
+			layout_config = { width = 0.5 },
+		}))
 	end, opts)
 	vim.keymap.set("n", "<leader>o", function()
 		telescope.lsp_document_symbols(themes.get_ivy())
