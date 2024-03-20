@@ -131,7 +131,13 @@ return packer.startup(function(use)
 	use({ "kdheepak/lazygit.nvim", cmd = "LazyGit" })
 	use({ "rmagatti/auto-session" })
 
-	use({ "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } })
+	use({
+		"rcarriga/nvim-dap-ui",
+		requires = {
+			"mfussenegger/nvim-dap",
+			"nvim-neotest/nvim-nio",
+		},
+	})
 	use({ "leoluz/nvim-dap-go" })
 	use({ "theHamsta/nvim-dap-virtual-text" })
 
@@ -157,7 +163,11 @@ return packer.startup(function(use)
 		end,
 	})
 
-	use({ "rest-nvim/rest.nvim" })
+	use({
+		"rest-nvim/rest.nvim",
+		-- v2.0.0 breaks fucking everything... I don't use this enough to care
+		tag = "v1.2.1",
+	})
 
 	use({ "nvim-pack/nvim-spectre" })
 
@@ -170,7 +180,7 @@ return packer.startup(function(use)
 
 	-- use({ "folke/which-key.nvim" })
 	-- use({ "folke/zen-mode.nvim" })
-	--use({ "folke/neodev.nvim" })
+	-- use({ "folke/neodev.nvim" })
 	use({
 		"folke/todo-comments.nvim",
 		event = "BufEnter",

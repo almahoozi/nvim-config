@@ -8,7 +8,7 @@ end
 
 return {
 	config = {
-		cmd = { "gopls", "serve", "-rpc.trace", "-logfile", "/tmp/gopls.log" },
+		--cmd = { "gopls", "serve", "-rpc.trace", "-logfile", "/tmp/gopls.log" },
 		root_dir = require("lspconfig/util").root_pattern("go.work", "go.mod", ".git", "main.go"),
 		settings = {
 			gopls = {

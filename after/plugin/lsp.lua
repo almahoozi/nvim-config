@@ -33,6 +33,7 @@ require("mason-lspconfig").setup({
 		-- TODO: Source list of installations from their respective configuration dirs
 		"asm_lsp",
 		"bashls", -- "shfmt",
+		"clangd",
 		-- "black",
 		"pyright", -- "delve",
 		-- "goimports",
