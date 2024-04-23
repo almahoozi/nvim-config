@@ -7,8 +7,9 @@ local ns = 0
 local initialized = false
 
 function ToggleTransparency(color)
-	color = color or "dracula"
-	vim.cmd("colorscheme " .. color)
+	local default_color = vim.g.default_colorscheme
+	color = color or default_color
+	vim.cmd.colorscheme(color)
 
 	if not initialized then
 		SaveBackgroundColors()

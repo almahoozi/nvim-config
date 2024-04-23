@@ -63,7 +63,7 @@ return packer.startup(function(use)
 	use({ "nvim-treesitter/nvim-treesitter-context" })
 	use({ "nvim-treesitter/playground" })
 
-	use({ "kyazdani42/nvim-web-devicons" })
+	use({ "nvim-tree/nvim-web-devicons" })
 
 	use({
 		"unblevable/quick-scope",
@@ -71,7 +71,7 @@ return packer.startup(function(use)
 			vim.g.qs_highlight_on_keys = { "f", "F", "t", "T" }
 		end,
 	})
-	use({ "lukas-reineke/indent-blankline.nvim" })
+	use({ "lukas-reineke/indent-blankline.nvim" }) -- FIXME: Crashes with Dracula
 	use({ "akinsho/bufferline.nvim" })
 	use({ "kyazdani42/nvim-tree.lua", disable = true })
 	use({ "windwp/nvim-autopairs" })
@@ -88,12 +88,18 @@ return packer.startup(function(use)
 
 	use({ "nvimtools/none-ls.nvim" })
 
-	use({ "Mofiqul/dracula.nvim" })
+	use({ "catppuccin/nvim", as = "catppuccin" })
+	use({ "folke/tokyonight.nvim", disable = true })
+	use({ "Mofiqul/dracula.nvim", disable = true }) -- FIXME: Crashes with indent-blankline
 
 	use({ "numToStr/Comment.nvim" })
 	use({ "JoosepAlviste/nvim-ts-context-commentstring" })
 	use({ "moll/vim-bbye" })
-	use({ "nvim-lualine/lualine.nvim" })
+	use({
+		"nvim-lualine/lualine.nvim",
+		disable = true,
+		require("lualine").setup({}),
+	})
 	use({ "akinsho/toggleterm.nvim" })
 	use({ "ahmedkhalf/project.nvim" })
 	use({ "lewis6991/impatient.nvim" })
