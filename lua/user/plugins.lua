@@ -98,7 +98,6 @@ return packer.startup(function(use)
 	use({
 		"nvim-lualine/lualine.nvim",
 		disable = true,
-		require("lualine").setup({}),
 	})
 	use({ "akinsho/toggleterm.nvim" })
 	use({ "ahmedkhalf/project.nvim" })

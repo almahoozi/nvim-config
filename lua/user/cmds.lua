@@ -8,6 +8,7 @@ end
 
 local function init(args)
 	vim.cmd("!go mod init " .. (args or vim.fn.fnamemodify(vim.fn.getcwd(), ":t")))
+	vim.cmd("!go mod tidy")
 end
 
 vim.api.nvim_create_user_command("Gorun", function(args)
@@ -31,3 +32,7 @@ vim.api.nvim_create_user_command("Go", function(args)
 		vim.cmd("!go " .. args.args)
 	end
 end, { nargs = "+" })
+
+vim.api.nvim_create_user_command("PR", function()
+	vim.cmd("!gh pr create -w")
+end, { nargs = 0 })
