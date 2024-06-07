@@ -88,6 +88,10 @@ local attach_to_buffer = function(bufnr, command)
 	end, {})
 
 	local run_tests = function()
+		if not vim.api.nvim_buf_is_valid(bufnr) then
+			return
+		end
+
 		if TestsInProgress then
 			return
 		end
@@ -186,16 +190,9 @@ local attach_to_buffer = function(bufnr, command)
 								severity = vim.diagnostic.severity.INFO,
 								source = "live-test",
 								message = output,
-								user_data = {},
-							})
-							table.insert(failed, {
-								bufnr = bufnr,
-								lnum = test.line,
-								col = 0,
-								severity = vim.diagnostic.severity.INFO,
-								source = "live-test",
-								message = "⚠ Test Skipped",
-								user_data = {},
+								user_data = {
+									virtual_text = "⚠ Test Skipped",
+								},
 							})
 						elseif not test.success then
 							local output = ""
@@ -209,23 +206,24 @@ local attach_to_buffer = function(bufnr, command)
 								severity = vim.diagnostic.severity.ERROR,
 								source = "live-test",
 								message = output,
-								user_data = {},
-							})
-							table.insert(failed, {
-								bufnr = bufnr,
-								lnum = test.line,
-								col = 0,
-								severity = vim.diagnostic.severity.ERROR,
-								source = "live-test",
-								message = "✗ Test Failed",
-								user_data = {},
+								user_data = {
+									virtual_text = "✗ Test Failed",
+								},
 							})
 						end
 					end
 				end
 
 				vim.diagnostic.set(ns, bufnr, failed, {
-					virtual_text = { prefix = "" },
+					virtual_text = {
+						prefix = "",
+						format = function(diagnostic)
+							if diagnostic.user_data.virtual_text then
+								return diagnostic.user_data.virtual_text
+							end
+							return diagnostic.message
+						end,
+					},
 				})
 			end,
 		})
@@ -313,6 +311,6 @@ vim.api.nvim_create_autocmd("BufEnter", {
 	group = group,
 	pattern = "*_test.go",
 	callback = function()
-		attach_to_buffer(vim.api.nvim_get_current_buf(), { "go", "test", "./...", "-v", "-json" })
+		attach_to_buffer(vim.api.nvim_get_current_buf(), { "go", "test", "./...", "-tags=tests", "-v", "-json" })
 	end,
 })
