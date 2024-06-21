@@ -71,7 +71,7 @@ return packer.startup(function(use)
 			vim.g.qs_highlight_on_keys = { "f", "F", "t", "T" }
 		end,
 	})
-	use({ "lukas-reineke/indent-blankline.nvim" }) -- FIXME: Crashes with Dracula
+	use({ "lukas-reineke/indent-blankline.nvim" }) -- FIX: Crashes with Dracula
 	use({ "akinsho/bufferline.nvim" })
 	use({ "kyazdani42/nvim-tree.lua", disable = true })
 	use({ "windwp/nvim-autopairs" })
@@ -90,7 +90,7 @@ return packer.startup(function(use)
 
 	use({ "catppuccin/nvim", as = "catppuccin" })
 	use({ "folke/tokyonight.nvim", disable = true })
-	use({ "Mofiqul/dracula.nvim", disable = true }) -- FIXME: Crashes with indent-blankline
+	use({ "Mofiqul/dracula.nvim", disable = true }) -- FIX: Crashes with indent-blankline
 
 	use({ "numToStr/Comment.nvim" })
 	use({ "JoosepAlviste/nvim-ts-context-commentstring" })
@@ -192,6 +192,13 @@ return packer.startup(function(use)
 		config = function()
 			require("todo-comments").setup({
 				signs = false,
+				keywords = {
+					WIP = {
+						icon = "",
+						color = "error",
+						alt = { "IMP", "IMPL", "IMPLEMENT" },
+					},
+				},
 			})
 		end,
 	})
