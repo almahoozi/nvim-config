@@ -12,7 +12,7 @@ spectre.setup({
 })
 
 vim.keymap.set("n", "<leader>s", function()
-	spectre.open_file_search({
+	spectre.open_visual({
 		select_word = true,
 	})
 end)
