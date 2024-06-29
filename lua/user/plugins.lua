@@ -193,6 +193,10 @@ return packer.startup(function(use)
 			require("todo-comments").setup({
 				signs = false,
 				keywords = {
+					IDEA = {
+						icon = "",
+						color = "info",
+					},
 					WIP = {
 						icon = "",
 						color = "error",
