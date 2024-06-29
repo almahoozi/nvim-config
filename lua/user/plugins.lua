@@ -199,6 +199,19 @@ return packer.startup(function(use)
 						alt = { "IMP", "IMPL", "IMPLEMENT" },
 					},
 				},
+				search = {
+					command = "rg",
+					args = {
+						"--hidden",
+						"-g",
+						"!.git",
+						"--color=never",
+						"--no-heading",
+						"--with-filename",
+						"--line-number",
+						"--column",
+					},
+				},
 			})
 		end,
 	})

@@ -20,6 +20,13 @@ vim.keymap.set("n", "<leader>pf", function()
 		builtin.find_files({})
 	end
 end, {})
+vim.keymap.set("n", "<leader>phf", function()
+	local ok, _ = pcall(builtin.git_files, { hidden = true })
+	if not ok then
+		builtin.find_files({ hidden = true })
+	end
+end, {})
+
 vim.keymap.set("n", "<C-p>", builtin.find_files, {})
 vim.keymap.set("n", "<leader>ps", builtin.live_grep, {})
 vim.keymap.set("n", "<leader>pr", builtin.resume, {})
