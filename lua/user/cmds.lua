@@ -34,5 +34,5 @@ vim.api.nvim_create_user_command("Go", function(args)
 end, { nargs = "+" })
 
 vim.api.nvim_create_user_command("PR", function()
-	vim.cmd("!gh pr create -w")
+	vim.cmd("!gh pr view -w > /dev/null 2>&1 || gh pr create -w")
 end, { nargs = 0 })

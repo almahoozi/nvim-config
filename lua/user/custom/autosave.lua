@@ -119,6 +119,7 @@ local attach_to_buffer = function(bufnr, command)
 
 				local ok, decoded = pcall(vim.json.decode, line)
 				if not ok then
+					print("LiveTests: Failed to decode line: " .. line)
 					goto continue
 				end
 

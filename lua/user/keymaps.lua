@@ -58,6 +58,9 @@ vim.keymap.set("n", "<leader>f", vim.lsp.buf.format, opts)
 
 vim.keymap.set("n", "<leader>/", "<Plug>NERDCommenterToggle", opts)
 
+-- Quit shortcuts
+vim.keymap.set("n", "<C-q><C-q>", ":SessionDelete<CR>:qa<CR>", opts)
+
 -- Insert --
 -- Exit insert mode
 vim.keymap.set("i", "jk", "<ESC>", opts)
