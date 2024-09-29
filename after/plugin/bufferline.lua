@@ -1,7 +1,6 @@
 require("bufferline").setup({
 	options = {
 		diagnostics = "nvim_lsp",
-		diagnostics_update_in_insert = true,
 		right_mouse_command = nil,
 		hover = {
 			enabled = true,

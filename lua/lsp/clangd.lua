@@ -1,3 +1,5 @@
 return {
-	config = {},
+	config = {
+		filetypes = { "c", "cpp", "objc", "objcpp" },
+	},
 }
