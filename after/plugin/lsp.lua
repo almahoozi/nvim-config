@@ -47,7 +47,7 @@ require("mason-lspconfig").setup({
 		"eslint",
 		"html",
 		"htmx",
-		"tsserver",
+		"ts_ls",
 		"jsonls",
 		"taplo",
 		"yamlls",
@@ -286,6 +286,7 @@ vim.api.nvim_create_user_command("Save", function()
 end, {})
 
 local lspconfig = require("lspconfig")
+lspconfig.protols.setup({}) -- cargo install protols from: https://github.com/coder3101/protols
 require("mason-lspconfig").setup_handlers({
 	function(name)
 		local ok, config = pcall(require, "lsp." .. name)

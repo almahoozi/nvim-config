@@ -1,3 +1,20 @@
+vim.api.nvim_create_user_command("Only", function()
+	-- :bw to all buffers other than the current one
+	-- TODO: Not working as expected
+	vim.cmd("windo if bufnr('%') != bufnr('%') | bd | endif")
+end, { nargs = 0 })
+
+-- GH commands
+vim.api.nvim_create_user_command("GH", function(args)
+	if args.args == "" then
+		vim.cmd("!gh browse")
+	else
+		vim.cmd("!gh " .. args.args)
+	end
+end, { nargs = "*" })
+
+-- Go commands
+-- TODO: Should be only registered in Go projects
 local function run(args)
 	vim.cmd("!go run " .. (args or "."))
 end
