@@ -1,3 +1,7 @@
+-- LSP configuration moved to lua/user/plugins.lua for proper loading order with Lazy.nvim
+-- This file is disabled to prevent duplicate configuration and loading order issues
+
+--[[
 -- https://vonheikemen.github.io/devlog/tools/setup-nvim-lspconfig-plus-nvim-cmp/#snippets
 -- https://github.com/VonHeikemen/lsp-zero.nvim/blob/v2.x/doc/md/lsp.md#you-might-not-need-lsp-zero
 -- TODO: Configure DAP, Linting, Formattings as well
@@ -26,6 +30,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 	end,
 })
 --]]
+--[[
 require("mason").setup()
 require("mason-lspconfig").setup({
 	automatic_installation = true,
@@ -118,30 +123,30 @@ cmp.setup({
 		fields = { "kind", "abbr", "menu" },
 		format = function(entry, item)
 			local kind_icons = {
-				Text = "",
+				Text = "",
 				Method = "ƒ",
-				Function = "",
-				Constructor = "",
+				Function = "",
+				Constructor = "",
 				Field = "ﰠ",
-				Variable = "",
-				Class = "",
+				Variable = "",
+				Class = "",
 				Interface = "ﰮ",
-				Module = "",
-				Property = "",
-				Unit = "",
-				Value = "",
+				Module = "",
+				Property = "",
+				Unit = "",
+				Value = "",
 				Enum = "了",
-				Keyword = "",
+				Keyword = "",
 				Snippet = "﬌",
-				Color = "",
-				File = "",
-				Reference = "",
-				Folder = "",
-				EnumMember = "",
-				Constant = "",
-				Struct = "",
-				Event = "",
-				Operator = "",
+				Color = "",
+				File = "",
+				Reference = "",
+				Folder = "",
+				EnumMember = "",
+				Constant = "",
+				Struct = "",
+				Event = "",
+				Operator = "",
 				TypeParameter = "T",
 			}
 
@@ -176,13 +181,13 @@ local sign = function(opts)
 	vim.fn.sign_define(opts.name, { texthl = opts.name, text = opts.text, numhl = "" })
 end
 
-sign({ name = "DiagnosticSignError", text = "" })
-sign({ name = "DiagnosticSignWarn", text = "" })
-sign({ name = "DiagnosticSignHint", text = "" })
-sign({ name = "DiagnosticSignInfo", text = "" })
+sign({ name = "DiagnosticSignError", text = "" })
+sign({ name = "DiagnosticSignWarn", text = "" })
+sign({ name = "DiagnosticSignHint", text = "" })
+sign({ name = "DiagnosticSignInfo", text = "" })
 
 vim.diagnostic.config({
-	virtual_text = { spacing = 4, prefix = "" },
+	virtual_text = { spacing = 4, prefix = "" },
 	update_in_insert = true,
 	severity_sort = true,
 	float = { border = "rounded" },
@@ -335,3 +340,4 @@ require("mason-lspconfig").setup_handlers({
 		lspconfig[name].setup(config)
 	end,
 })
+--]]
