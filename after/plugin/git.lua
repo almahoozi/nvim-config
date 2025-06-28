@@ -1,3 +1,7 @@
+-- Git configuration moved to lua/user/plugins.lua for proper loading order with Lazy.nvim
+-- This file is disabled to prevent duplicate configuration and loading order issues
+
+--[[
 require("gitlinker").setup()
 require("gitsigns").setup({
 	current_line_blame = true,
@@ -21,7 +25,9 @@ require("gitsigns").setup({
 		nm("<leader>gb", ':lua require"gitsigns".blame_line({full=true})<CR>', opts)
 	end,
 })
+--]]
 
+-- Git keymaps (still active)
 vim.keymap.set("n", "<leader>gs", vim.cmd.Git)
 vim.keymap.set("n", "<leader>gc", ":G commit<CR>")
 vim.keymap.set("n", "<leader>gp", ":G push<CR>")

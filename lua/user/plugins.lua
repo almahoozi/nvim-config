@@ -80,9 +80,41 @@ require("lazy").setup({
 	-- Multi-cursor
 	{ "mg979/vim-visual-multi" },
 
-	-- Git integration
-	{ "lewis6991/gitsigns.nvim" },
-	{ "ruifm/gitlinker.nvim" },
+	-- Git integration (moved from after/plugin/git.lua for proper loading order)
+	{ 
+		"lewis6991/gitsigns.nvim",
+		config = function()
+			require("gitsigns").setup({
+				current_line_blame = true,
+				current_line_blame_opts = {
+					delay = 300,
+					-- ignore_whitespace = false,
+				},
+				-- word_diff  = true,
+				on_attach = function(bufnr)
+					-- local gs = require("gitsigns")
+					local opts = { noremap = true, silent = true }
+					local nm = function(...)
+						vim.api.nvim_buf_set_keymap(bufnr, "n", ...)
+					end
+					nm("]c", ':lua require"gitsigns".next_hunk()<CR>', opts)
+					nm("[c", ':lua require"gitsigns".prev_hunk()<CR>', opts)
+					-- nm("<leader>ggb", ':lua require"gitsigns".blame_line()<CR>', opts)
+					-- nm("<leader>q", ':lua require"gitsigns".reset_hunk()<CR>', opts)
+					-- nm("<leader>Q", ':lua require"gitsigns".reset_buffer()<CR>', opts)
+					nm("<leader>gp", ':lua require"gitsigns".preview_hunk()<CR>', opts)
+					nm("<leader>gb", ':lua require"gitsigns".blame_line({full=true})<CR>', opts)
+				end,
+			})
+		end,
+	},
+	{ 
+		"ruifm/gitlinker.nvim",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		config = function()
+			require("gitlinker").setup()
+		end,
+	},
 
 	-- Formatting and linting
 	{ "nvimtools/none-ls.nvim" },

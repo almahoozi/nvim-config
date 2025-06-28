@@ -118,16 +118,20 @@ Including:
 ## Issues Fixed During Migration
 
 ### ⚠️ Plugin Loading Order Issues (FIXED)
-**Problem**: With Lazy.nvim's lazy loading approach, the LSP configuration in `after/plugin/lsp.lua` was trying to run before Mason and mason-lspconfig were fully loaded, causing errors:
+**Problem**: With Lazy.nvim's lazy loading approach, multiple configurations in `after/plugin/` were trying to run before their respective plugins were loaded, causing errors:
 - `module 'mason-lspconfig.features.ensure_installed' not found`
 - `attempt to call field 'setup_handlers' (a nil value)`
+- `attempt to call field 'subscribe' (a nil value)` (gitsigns)
+- `module 'lazy.view.commands' not found`
 - Various other module loading errors
 
 **Solution**: 
 - **Moved LSP configuration** from `after/plugin/lsp.lua` into the plugin specification in `lua/user/plugins.lua`
+- **Moved Git configuration** from `after/plugin/git.lua` into the plugin specification  
 - **Added proper dependencies** to ensure loading order: Mason → mason-lspconfig → nvim-lspconfig
-- **Disabled original LSP config file** to prevent conflicts and duplicate configuration
+- **Disabled original config files** to prevent conflicts and duplicate configuration
 - **Added CMP configuration** directly into the plugin spec with proper dependencies
+- **Cleaned up corrupted cache and session files** that contained old Packer references
 
 ### 🔧 Configuration Changes Made
 
@@ -138,8 +142,10 @@ Including:
 - **CMP integration**: Moved completion setup into plugin spec with dependency management
 
 #### Files Modified for Fixes
-- `lua/user/plugins.lua`: Added comprehensive LSP and completion configuration
+- `lua/user/plugins.lua`: Added comprehensive LSP, completion, and git configuration
 - `after/plugin/lsp.lua`: Disabled (commented out) to prevent conflicts
+- `after/plugin/git.lua`: Disabled gitsigns/gitlinker setup (commented out) to prevent conflicts
+- **Cleaned up**: Removed corrupted cache, state files, and old session files
 
 ## Post-Migration Steps
 
