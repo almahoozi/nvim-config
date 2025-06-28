@@ -1,29 +1,19 @@
--- TODO: Use Lazy instead of Packer
-local packer_path = vim.fn.stdpath("data") .. "/site/pack/packer"
-local install_path = packer_path .. "/start/packer.nvim"
-
-if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
-	PACKER_BOOTSTRAP = vim.fn.system({
+-- Migrated from Packer.nvim to Lazy.nvim
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.loop.fs_stat(lazypath) then
+	vim.fn.system({
 		"git",
 		"clone",
-		"--depth",
-		"1",
-		"https://github.com/wbthomason/packer.nvim",
-		install_path,
+		"--filter=blob:none",
+		"https://github.com/folke/lazy.nvim.git",
+		"--branch=stable", -- latest stable release
+		lazypath,
 	})
-	print("Installing packer close and reopen Neovim...")
-	vim.cmd.packadd("packer.nvim")
-	if vim.fn.empty(vim.fn.glob(vim.fn.stdpath("config") .. ".packer-plugins")) > 0 then
-		vim.fn.system({
-			"ln",
-			"-s",
-			packer_path,
-			vim.fn.stdpath("config") .. "/.packer-plugins",
-		})
-	end
 end
+vim.opt.rtp:prepend(lazypath)
 
-local ag = vim.api.nvim_create_augroup("packer_sync", {})
+-- Auto-sync on plugin file changes
+local ag = vim.api.nvim_create_augroup("lazy_sync", {})
 vim.api.nvim_create_autocmd("BufWritePost", {
 	group = ag,
 	pattern = "lua/user/plugins.lua",
@@ -33,92 +23,133 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 			return
 		end
 		vim.cmd("source " .. ev.file)
-		vim.cmd("PackerSync")
+		require("lazy").sync()
 	end,
 })
 
-local ok, packer = pcall(require, "packer")
-if not ok then
-	return
-end
+require("lazy").setup({
+	-- Core dependencies
+	{ "nvim-lua/plenary.nvim" },
 
-packer.init({
-	display = {
-		preview_updates = true,
-		open_fn = function()
-			return require("packer.util").float({ border = "rounded" })
-		end,
+	-- Telescope and extensions
+	{ 
+		"nvim-telescope/telescope.nvim",
+		dependencies = { "nvim-lua/plenary.nvim" },
 	},
-})
+	{ "nvim-telescope/telescope-media-files.nvim" },
+	{ 
+		"nvim-telescope/telescope-fzf-native.nvim", 
+		build = "make" 
+	},
 
-return packer.startup(function(use)
-	use({ "nvim-lua/plenary.nvim" })
-	use({ "wbthomason/packer.nvim", requires = "nvim-lua/plenary.nvim" })
+	-- Treesitter
+	{ 
+		"nvim-treesitter/nvim-treesitter", 
+		build = ":TSUpdate" 
+	},
+	{ "nvim-treesitter/nvim-treesitter-context" },
+	{ "nvim-treesitter/playground" },
 
-	use({ "nvim-telescope/telescope.nvim" })
-	use({ "nvim-telescope/telescope-media-files.nvim" })
-	use({ "nvim-telescope/telescope-fzf-native.nvim", run = "make" })
+	-- Icons
+	{ "nvim-tree/nvim-web-devicons" },
 
-	use({ "nvim-treesitter/nvim-treesitter", run = ":TSUpdate" })
-	use({ "nvim-treesitter/nvim-treesitter-context" })
-	use({ "nvim-treesitter/playground" })
-
-	use({ "nvim-tree/nvim-web-devicons" })
-
-	use({
+	-- Movement and navigation
+	{
 		"unblevable/quick-scope",
 		config = function()
 			vim.g.qs_highlight_on_keys = { "f", "F", "t", "T" }
 		end,
-	})
-	use({ "lukas-reineke/indent-blankline.nvim" }) -- FIX: Crashes with Dracula
-	use({ "akinsho/bufferline.nvim" })
-	use({ "kyazdani42/nvim-tree.lua", disable = true })
-	use({ "windwp/nvim-autopairs" })
-	use({ "p00f/nvim-ts-rainbow" })
+	},
 
-	use({ "theprimeagen/harpoon" })
-	use({ "mbbill/undotree" })
-	use({ "tpope/vim-fugitive" })
+	-- UI and visual enhancements
+	{ "lukas-reineke/indent-blankline.nvim" }, -- FIX: Crashes with Dracula
+	{ "akinsho/bufferline.nvim" },
+	{ 
+		"kyazdani42/nvim-tree.lua", 
+		enabled = false 
+	},
+	{ "windwp/nvim-autopairs" },
+	{ "p00f/nvim-ts-rainbow" },
 
-	use({ "mg979/vim-visual-multi" })
+	-- File management and navigation
+	{ "theprimeagen/harpoon" },
+	{ "mbbill/undotree" },
+	{ "tpope/vim-fugitive" },
+	{ "stevearc/oil.nvim" },
 
-	use({ "lewis6991/gitsigns.nvim" })
-	use({ "ruifm/gitlinker.nvim" })
+	-- Multi-cursor
+	{ "mg979/vim-visual-multi" },
 
-	use({ "nvimtools/none-ls.nvim" })
+	-- Git integration
+	{ "lewis6991/gitsigns.nvim" },
+	{ "ruifm/gitlinker.nvim" },
 
-	use({ "catppuccin/nvim", as = "catppuccin" })
-	use({ "folke/tokyonight.nvim", disable = true })
-	use({ "Mofiqul/dracula.nvim", disable = true }) -- FIX: Crashes with indent-blankline
+	-- Formatting and linting
+	{ "nvimtools/none-ls.nvim" },
 
-	use({ "numToStr/Comment.nvim" })
-	use({ "JoosepAlviste/nvim-ts-context-commentstring" })
-	use({ "moll/vim-bbye" })
-	use({
+	-- Themes
+	{ "catppuccin/nvim", name = "catppuccin" },
+	{ 
+		"folke/tokyonight.nvim", 
+		enabled = false 
+	},
+	{ 
+		"Mofiqul/dracula.nvim", 
+		enabled = false 
+	}, -- FIX: Crashes with indent-blankline
+
+	-- Comments
+	{ "numToStr/Comment.nvim" },
+	{ "JoosepAlviste/nvim-ts-context-commentstring" },
+	{ "scrooloose/nerdcommenter" },
+
+	-- Buffer management
+	{ "moll/vim-bbye" },
+
+	-- Status line (disabled)
+	{
 		"nvim-lualine/lualine.nvim",
-		disable = true,
-	})
-	use({ "akinsho/toggleterm.nvim" })
-	use({ "ahmedkhalf/project.nvim" })
-	use({ "lewis6991/impatient.nvim" })
-	use({ "goolord/alpha-nvim" })
+		enabled = false,
+	},
+	{ "vim-airline/vim-airline" },
 
-	use({ "williamboman/mason.nvim", run = "MasonUpdate" })
-	use({ "williamboman/mason-lspconfig.nvim" })
-	use({ "neovim/nvim-lspconfig" })
-	use({ "hrsh7th/cmp-nvim-lsp" })
-	use({ "hrsh7th/nvim-cmp" })
-	use({ "hrsh7th/cmp-buffer" })
-	use({ "L3MON4D3/LuaSnip" })
-	use({ "rafamadriz/friendly-snippets" })
-	use({ "hrsh7th/cmp-nvim-lua" })
-	use({ "hrsh7th/cmp-path" })
-	use({ "saadparwaiz1/cmp_luasnip" })
+	-- Terminal
+	{ "akinsho/toggleterm.nvim" },
 
-	use({ "RRethy/vim-illuminate" })
+	-- Project management
+	{ "ahmedkhalf/project.nvim" },
 
-	use({
+	-- Performance
+	{ "lewis6991/impatient.nvim" },
+
+	-- Start screen
+	{ "goolord/alpha-nvim" },
+
+	-- LSP
+	{ 
+		"williamboman/mason.nvim", 
+		build = ":MasonUpdate" 
+	},
+	{ "williamboman/mason-lspconfig.nvim" },
+	{ "neovim/nvim-lspconfig" },
+
+	-- Completion
+	{ "hrsh7th/cmp-nvim-lsp" },
+	{ "hrsh7th/nvim-cmp" },
+	{ "hrsh7th/cmp-buffer" },
+	{ "hrsh7th/cmp-nvim-lua" },
+	{ "hrsh7th/cmp-path" },
+	{ "saadparwaiz1/cmp_luasnip" },
+
+	-- Snippets
+	{ "L3MON4D3/LuaSnip" },
+	{ "rafamadriz/friendly-snippets" },
+
+	-- Code highlighting and navigation
+	{ "RRethy/vim-illuminate" },
+
+	-- AI assistance
+	{
 		"github/copilot.vim",
 		config = function()
 			vim.g.copilot_filetypes = {
@@ -127,66 +158,80 @@ return packer.startup(function(use)
 				yaml = true,
 			}
 		end,
-	})
-	use({ "tpope/vim-surround" })
-	use({ "airblade/vim-gitgutter", disable = true })
-	use({ "vim-airline/vim-airline" })
-	use({ "scrooloose/nerdcommenter" })
-	use({ "majutsushi/tagbar" })
-	use({ "kdheepak/lazygit.nvim", cmd = "LazyGit" })
-	use({ "rmagatti/auto-session" })
+	},
 
-	use({
+	-- Text objects and manipulation
+	{ "tpope/vim-surround" },
+
+	-- Git gutter (disabled)
+	{ 
+		"airblade/vim-gitgutter", 
+		enabled = false 
+	},
+
+	-- Tags
+	{ "majutsushi/tagbar" },
+
+	-- Git UI
+	{ 
+		"kdheepak/lazygit.nvim", 
+		cmd = "LazyGit" 
+	},
+
+	-- Session management
+	{ "rmagatti/auto-session" },
+
+	-- Debug Adapter Protocol
+	{
 		"rcarriga/nvim-dap-ui",
-		requires = {
+		dependencies = {
 			"mfussenegger/nvim-dap",
 			"nvim-neotest/nvim-nio",
 		},
-	})
-	use({ "leoluz/nvim-dap-go" })
-	use({ "theHamsta/nvim-dap-virtual-text" })
+	},
+	{ "leoluz/nvim-dap-go" },
+	{ "theHamsta/nvim-dap-virtual-text" },
 
-	use({ "stevearc/oil.nvim" })
-	use({
+	-- Additional tools
+	{
 		"stevearc/aerial.nvim",
-		--disable = true,
 		config = function()
 			require("aerial").setup()
 		end,
-	})
-	use({
-		--disable = true,
+	},
+	{
 		"stevearc/conform.nvim",
 		config = function()
 			require("conform").setup()
 		end,
-	})
-	use({
+	},
+	{
 		"stevearc/dressing.nvim",
 		config = function()
 			require("dressing").setup()
 		end,
-	})
+	},
 
-	use({
+	-- REST client
+	{
 		"rest-nvim/rest.nvim",
 		-- v2.0.0 breaks fucking everything... I don't use this enough to care
-		tag = "v1.2.1",
-	})
+		version = "v1.2.1",
+	},
 
-	use({ "nvim-pack/nvim-spectre" })
+	-- Search and replace
+	{ "nvim-pack/nvim-spectre" },
 
-	use({
+	-- LSP progress indicator
+	{
 		"j-hui/fidget.nvim",
 		config = function()
 			require("fidget").setup({})
 		end,
-	})
+	},
 
-	-- use({ "folke/which-key.nvim" })
-	-- use({ "folke/zen-mode.nvim" })
-	-- use({ "folke/neodev.nvim" })
-	use({
+	-- TODO comments
+	{
 		"folke/todo-comments.nvim",
 		event = "BufEnter",
 		config = function()
@@ -194,11 +239,11 @@ return packer.startup(function(use)
 				signs = false,
 				keywords = {
 					IDEA = {
-						icon = "",
+						icon = "",
 						color = "info",
 					},
 					WIP = {
-						icon = "",
+						icon = "",
 						color = "error",
 						alt = { "IMP", "IMPL", "IMPLEMENT" },
 					},
@@ -218,18 +263,20 @@ return packer.startup(function(use)
 				},
 			})
 		end,
-	})
+	},
 
-	use({
+	-- Mini.nvim collection
+	{
 		"echasnovski/mini.nvim",
 		config = function()
 			require("mini.ai").setup({ n_lines = 500 })
 			require("mini.surround").setup()
 		end,
-	})
+	},
 
-	use({
-		"~/Documents/Source/personal/nvim/repl.nvim",
+	-- Custom local plugins
+	{
+		dir = "~/Documents/Source/personal/nvim/repl.nvim",
 		-- "almahoozi/repl.nvim",
 		config = function()
 			require("repl").setup({
@@ -237,18 +284,31 @@ return packer.startup(function(use)
 				Mappings = { Run = { "<leader><cr>" } },
 			})
 		end,
-	})
-	use({
-		"~/Documents/Source/personal/nvim/notes.nvim",
+	},
+	{
+		dir = "~/Documents/Source/personal/nvim/notes.nvim",
 		-- "almahoozi/notes.nvim",
 		config = function()
 			local notes = require("notes")
 			notes.setup()
 			vim.keymap.set("n", "<leader>n", notes.open_global, { noremap = true, silent = true })
 		end,
-	})
+	},
 
-	if PACKER_BOOTSTRAP then
-		require("packer").sync()
-	end
-end)
+	-- Commented out plugins (originally disabled or commented)
+	-- { "folke/which-key.nvim" },
+	-- { "folke/zen-mode.nvim" },
+	-- { "folke/neodev.nvim" },
+}, {
+	-- Lazy.nvim configuration options
+	ui = {
+		border = "rounded",
+	},
+	checker = {
+		enabled = true,
+		notify = false,
+	},
+	change_detection = {
+		notify = false,
+	},
+})
