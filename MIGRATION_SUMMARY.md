@@ -94,8 +94,24 @@ Including:
 ### ⚠️ LSP Configuration Architecture Change
 - **BREAKING**: LSP setup moved from `after/plugin/lsp.lua` to plugin configuration in `lua/user/plugins.lua`
 - **Reason**: Lazy.nvim's lazy loading required proper dependency management to prevent loading order issues
-- **Impact**: Original `after/plugin/lsp.lua` is now disabled (commented out) but preserved for reference
+- **Impact**: Original `after/plugin/lsp.lua` is now **DELETED** (was causing conflicts even when commented out)
 - **Benefit**: Eliminates plugin loading order issues and ensures stable LSP functionality
+
+### ⚠️ Additional Issues Fixed (Round 2)
+**New Problems Encountered**:
+- `after/plugin/lsp.lua` was still being executed despite being commented out
+- Mason registry errors: `attempt to call method 'new' (a nil value)`
+- setup_handlers errors: Mason-lspconfig not properly initialized
+- Copilot showing old Packer paths (cache corruption)
+- Lazy.nvim installation corrupted: `module 'lazy.view.commands' not found`
+
+**Additional Solutions Applied**:
+- **Completely deleted** `after/plugin/lsp.lua` (commenting wasn't sufficient)
+- **Added event-based lazy loading** for almost all plugins
+- **Fixed Mason dependency chain** with explicit require statements and error handling
+- **Comprehensive cleanup** of ALL nvim directories (`~/.cache/nvim`, `~/.local/state/nvim`, `~/.local/share/nvim`)
+- **Added safe fallbacks** for telescope dependencies in LSP configuration
+- **Performance optimizations** with lazy loading and disabled unused plugins
 
 ## Benefits Gained
 
@@ -142,27 +158,30 @@ Including:
 - **CMP integration**: Moved completion setup into plugin spec with dependency management
 
 #### Files Modified for Fixes
-- `lua/user/plugins.lua`: Added comprehensive LSP, completion, and git configuration
-- `after/plugin/lsp.lua`: Disabled (commented out) to prevent conflicts
-- `after/plugin/git.lua`: Disabled gitsigns/gitlinker setup (commented out) to prevent conflicts
-- **Cleaned up**: Removed corrupted cache, state files, and old session files
+- `lua/user/plugins.lua`: **Complete rewrite** with proper lazy loading, dependencies, and event-based loading
+- `after/plugin/lsp.lua`: **DELETED** (was causing conflicts despite being commented out)
+- `after/plugin/git.lua`: **Cleaned up** - removed plugin setup, kept only keymaps
+- **Deep cleanup**: Removed ALL cache, state, plugin directories, and session files
+- **Added lazy loading**: Most plugins now load only when needed (events, commands, keys)
+- **Fixed dependency chains**: Mason → mason-lspconfig → nvim-lspconfig with proper error handling
 
 ## Post-Migration Steps
 
-1. **Remove old Packer directory** (optional cleanup):
-   ```bash
-   rm -rf ~/.local/share/nvim/site/pack/packer
-   ```
+### ✅ **Already Completed** (Done Automatically)
+- **Deep cleanup performed**: All cache, state, and plugin directories removed
+- **LSP config file deleted**: `after/plugin/lsp.lua` completely removed  
+- **Git config cleaned**: Only keymaps remain in `after/plugin/git.lua`
+- **Lazy.nvim reset**: Fresh installation will occur on next startup
 
-2. **Clean up old LSP config** (optional):
+### 🚀 **Next Steps for User**
+1. **Launch Neovim**: Lazy.nvim will auto-install all plugins on first run
+2. **Wait for installation**: Initial setup may take a few minutes
+3. **Verify installation**: Run `:Lazy` to check plugin status
+4. **Check functionality**: Test LSP, completion, and git features
+5. **Optional cleanup**: Remove any remaining packer symlinks if they exist:
    ```bash
-   # The old LSP config file is now disabled but can be removed if desired
-   # rm ~/.config/nvim/after/plugin/lsp.lua
+   find ~/.config -name "*packer*" -delete 2>/dev/null || true
    ```
-
-3. **First run**: Launch Neovim - Lazy will auto-install
-4. **Verify installation**: Run `:Lazy` to check plugin status  
-5. **Force sync if needed**: Run `:Lazy sync` to ensure all plugins are up to date
 
 ## Compatibility
 
