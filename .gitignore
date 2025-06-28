@@ -1,4 +1,4 @@
 .DS_Store
-/.packer-plugins
+/lazy-lock.json
 /.config/
 /plugin/
