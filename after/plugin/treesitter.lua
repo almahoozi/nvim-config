@@ -8,7 +8,7 @@ require("nvim-treesitter.configs").setup({
 		"go",
 		"gomod",
 		"c",
-		-- "c_sharp",
+		"c_sharp",
 		"bash",
 		"cmake",
 		"css",
@@ -32,6 +32,7 @@ require("nvim-treesitter.configs").setup({
 		"python",
 		"lua",
 		"rust",
+		"zig",
 	},
 
 	-- Install parsers synchronously (only applied to `ensure_installed`)

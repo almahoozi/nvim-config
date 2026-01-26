@@ -60,10 +60,19 @@ return packer.startup(function(use)
 	use({ "nvim-telescope/telescope-fzf-native.nvim", run = "make" })
 
 	use({ "nvim-treesitter/nvim-treesitter", run = ":TSUpdate" })
-	use({ "nvim-treesitter/nvim-treesitter-context" })
+	use({
+		"nvim-treesitter/nvim-treesitter-context",
+		--disable = true,
+		config = function()
+			require("treesitter-context").setup({})
+		end,
+	})
 	use({ "nvim-treesitter/playground" })
 
+	-- TODO: This devicons doesn't always show proper diag & completion icons
 	use({ "nvim-tree/nvim-web-devicons" })
+	-- TODO: This devicons doesn't have docker, toml, and others
+	--use({ "kyazdani42/nvim-web-devicons" })
 
 	use({
 		"unblevable/quick-scope",
@@ -75,7 +84,7 @@ return packer.startup(function(use)
 	use({ "akinsho/bufferline.nvim" })
 	use({ "kyazdani42/nvim-tree.lua", disable = true })
 	use({ "windwp/nvim-autopairs" })
-	use({ "p00f/nvim-ts-rainbow" })
+	use({ "p00f/nvim-ts-rainbow", disable = true })
 
 	use({ "theprimeagen/harpoon" })
 	use({ "mbbill/undotree" })
@@ -126,6 +135,7 @@ return packer.startup(function(use)
 				markdown = true,
 				yaml = true,
 			}
+			--vim.g.copilot_proxy_strict_ssl = false
 		end,
 	})
 	use({ "tpope/vim-surround" })
@@ -134,7 +144,7 @@ return packer.startup(function(use)
 	use({ "scrooloose/nerdcommenter" })
 	use({ "majutsushi/tagbar" })
 	use({ "kdheepak/lazygit.nvim", cmd = "LazyGit" })
-	use({ "rmagatti/auto-session" })
+	use({ "rmagatti/auto-session", disable = true })
 
 	use({
 		"rcarriga/nvim-dap-ui",
@@ -202,6 +212,13 @@ return packer.startup(function(use)
 						color = "error",
 						alt = { "IMP", "IMPL", "IMPLEMENT" },
 					},
+					DONE = {
+						icon = "✓",
+						color = "green",
+					},
+				},
+				colors = {
+					green = "#00FF00",
 				},
 				search = {
 					command = "rg",

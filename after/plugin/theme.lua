@@ -31,7 +31,7 @@ require("catppuccin").setup({
 			IlluminatedWordText = { bg = colors.overlay2, standout = true },
 			IlluminatedWordRead = { bg = colors.overlay2, standout = true },
 			IlluminatedWordWrite = { bg = colors.overlay2, standout = true },
-			TreesitterContext = { bg = colors.overlay2 },
+			--TreesitterContext = { bg = colors.overlay2 },
 			QuickScopePrimary = { fg = highlights.Function.fg, standout = true },
 			QuickScopeSecondary = { fg = highlights.Define.fg, standout = true },
 			TestPassed = { fg = colors.green },

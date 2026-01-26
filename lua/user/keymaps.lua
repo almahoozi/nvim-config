@@ -6,6 +6,11 @@ end
 -- Normal --
 vim.keymap.set("n", "-", ":Oil<cr>", opts)
 
+-- CLIP
+vim.keymap.set("v", "<leader>{", "!clip<CR>", opts)
+vim.keymap.set("v", "<leader>}", '"_d:-1r !clip<CR>', opts)
+vim.keymap.set("n", "<leader>}", ":-1r !clip<CR>", opts)
+
 -- Window navigation
 vim.keymap.set("n", "<leader>h", "<C-w>h", opts)
 vim.keymap.set("n", "<leader>j", "<C-w>j", opts)

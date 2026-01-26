@@ -26,41 +26,45 @@ vim.api.nvim_create_autocmd("LspAttach", {
 	end,
 })
 --]]
+local lsp_list = {
+	-- TODO: Source list of installations from their respective configuration dirs
+	"asm_lsp",
+	"bashls", --"shfmt",
+	"protols",
+	"clangd",
+	-- "black",
+	"pyright", -- "delve",
+	-- "goimports",
+	"golangci_lint_ls",
+	"gopls",
+	"templ",
+	"docker_compose_language_service",
+	-- "dockerfilels",
+
+	"cssls",
+	"eslint",
+	"html",
+	"htmx",
+	"ts_ls",
+	"jsonls",
+	"taplo",
+	"yamlls",
+	"lua_ls", -- "stylua",
+	-- "markdownlint",
+	"marksman", -- "prettierd",
+	"rust_analyzer", -- "sql_formatter",
+	-- "sqlfmt",
+	"sqlls",
+	"terraformls",
+	"tflint",
+	"vimls",
+	"zls",
+}
 require("mason").setup()
 require("mason-lspconfig").setup({
-	automatic_installation = true,
-	ensure_installed = {
-		-- TODO: Source list of installations from their respective configuration dirs
-		"asm_lsp",
-		"bashls", -- "shfmt",
-		"clangd",
-		-- "black",
-		"pyright", -- "delve",
-		-- "goimports",
-		"golangci_lint_ls",
-		"gopls",
-		"templ",
-		"docker_compose_language_service",
-		-- "dockerfilels",
-
-		"cssls",
-		"eslint",
-		"html",
-		"htmx",
-		"ts_ls",
-		"jsonls",
-		"taplo",
-		"yamlls",
-		"lua_ls", -- "stylua",
-		-- "markdownlint",
-		"marksman", -- "prettierd",
-		"rust_analyzer", -- "sql_formatter",
-		-- "sqlfmt",
-		"sqlls",
-		"terraformls",
-		"tflint",
-		"vimls",
-	},
+	--automatic_enable = false,
+	--automatic_installation = true,
+	ensure_installed = lsp_list,
 })
 
 local cmp = require("cmp")
@@ -172,20 +176,25 @@ cmp.setup({
 	},
 })
 
-local sign = function(opts)
-	vim.fn.sign_define(opts.name, { texthl = opts.name, text = opts.text, numhl = "" })
-end
-
-sign({ name = "DiagnosticSignError", text = "" })
-sign({ name = "DiagnosticSignWarn", text = "" })
-sign({ name = "DiagnosticSignHint", text = "" })
-sign({ name = "DiagnosticSignInfo", text = "" })
-
 vim.diagnostic.config({
 	virtual_text = { spacing = 4, prefix = "" },
 	update_in_insert = true,
 	severity_sort = true,
 	float = { border = "rounded" },
+	--underline = false,
+	signs = {
+		text = {
+			[vim.diagnostic.severity.ERROR] = "",
+			[vim.diagnostic.severity.WARN] = "",
+			[vim.diagnostic.severity.HINT] = "",
+			[vim.diagnostic.severity.INFO] = "",
+			-- NOTE: Fallback in case of font issues or unavailability
+			--[vim.diagnostic.severity.ERROR] = "x",
+			--[vim.diagnostic.severity.WARN] = "*",
+			--[vim.diagnostic.severity.HINT] = "?",
+			--[vim.diagnostic.severity.INFO] = "i",
+		},
+	},
 })
 
 -- Round them corners
@@ -226,7 +235,11 @@ local lsp_attach = function(client, bufnr)
 	vim.keymap.set({ "n", "i" }, "<C-h>", vim.lsp.buf.signature_help, opts)
 	-- TODO: Consolidate with telescope.lua mappings
 	vim.keymap.set("n", "gr", function()
-		telescope.lsp_references(themes.get_dropdown())
+		telescope.lsp_references(themes.get_dropdown({
+			layout_config = {
+				width = 0.8,
+			},
+		}))
 	end, opts)
 	vim.keymap.set("n", "gd", function()
 		telescope.lsp_definitions(themes.get_dropdown())
@@ -235,8 +248,10 @@ local lsp_attach = function(client, bufnr)
 		telescope.lsp_type_definitions(themes.get_dropdown())
 	end, opts)
 	vim.keymap.set("n", "gi", function()
-		telescope.lsp_implementations(themes.get_cursor({
-			layout_config = { width = 0.5 },
+		telescope.lsp_implementations(themes.get_dropdown({
+			layout_config = {
+				width = 0.8,
+			},
 		}))
 	end, opts)
 	vim.keymap.set("n", "<leader>o", function()
@@ -285,53 +300,49 @@ vim.api.nvim_create_user_command("Save", function()
 	vim.b.skip_format = false
 end, {})
 
-local lspconfig = require("lspconfig")
-lspconfig.protols.setup({}) -- cargo install protols from: https://github.com/coder3101/protols
-require("mason-lspconfig").setup_handlers({
-	function(name)
-		local ok, config = pcall(require, "lsp." .. name)
-		if ok then
-			if type(config) ~= "table" or not config.config then
-				print("Error loading config for " .. name)
-				print(
-					"LSP specific configs must be returned in an exposed `config()` function (or `config` table) in a Lua module under 'lua/lsp/' with the name matching the LSP Server's name, for example 'lua_ls.lua' (or 'lua_ls/init.lua')"
-				)
+for _, name in ipairs(lsp_list) do
+	local ok, config = pcall(require, "lsp." .. name)
+	if ok then
+		if type(config) ~= "table" or not config.config then
+			print("Error loading config for " .. name)
+			print(
+				"LSP specific configs must be returned in an exposed `config()` function (or `config` table) in a Lua module under 'lua/lsp/' with the name matching the LSP Server's name, for example 'lua_ls.lua' (or 'lua_ls/init.lua')"
+			)
+			print("Using default config")
+			ok = false
+		elseif type(config.config) == "function" then
+			ok, config = pcall(config.config)
+			if not ok then
+				local err = config
+				print("Error loading config for " .. name .. ": " .. err)
 				print("Using default config")
-				ok = false
-			elseif type(config.config) == "function" then
-				ok, config = pcall(config.config)
-				if not ok then
-					local err = config
-					print("Error loading config for " .. name .. ": " .. err)
-					print("Using default config")
-				end
-			elseif type(config.config) == "table" then
-				config = config.config
-			else
-				print(
-					"Error loading config for "
-						.. name
-						.. ": config cannot be of type "
-						.. type(config.config)
-						.. "; it must be either a function returning a table, or a table itself"
-				)
-				print("Using default config")
-				ok = false
 			end
+		elseif type(config.config) == "table" then
+			config = config.config
+		else
+			print(
+				"Error loading config for "
+					.. name
+					.. ": config cannot be of type "
+					.. type(config.config)
+					.. "; it must be either a function returning a table, or a table itself"
+			)
+			print("Using default config")
+			ok = false
 		end
+	end
 
-		if not ok then
-			config = {}
-		end
+	if not ok then
+		config = {}
+	end
 
-		if not config.on_attach then
-			config.on_attach = lsp_attach
-		end
+	if not config.on_attach then
+		config.on_attach = lsp_attach
+	end
 
-		if not config.capabilities then
-			config.capabilities = lsp_capabilities
-		end
+	if not config.capabilities then
+		config.capabilities = lsp_capabilities
+	end
 
-		lspconfig[name].setup(config)
-	end,
-})
+	vim.lsp.config(name, config)
+end

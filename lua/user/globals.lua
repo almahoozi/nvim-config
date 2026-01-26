@@ -1,6 +1,8 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
+--vim.g.copilot_proxy_strict_ssl = false
+
 -- No longer using netrw
 --[[
 vim.g.netrw_banner = 0

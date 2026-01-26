@@ -1,5 +1,6 @@
 local fmt = require("null-ls").builtins.formatting
 local diag = require("null-ls").builtins.diagnostics
+--local code_actions = require("null-ls").builtins.code_actions
 require("null-ls").setup({
 	sources = {
 		fmt.stylua,
@@ -15,5 +16,8 @@ require("null-ls").setup({
 		fmt.asmfmt, -- diag.golangci_lint,
 		diag.actionlint,
 		diag.checkmake,
+		diag.zsh,
+		diag.dotenv_linter,
+		--code_actions.shellcheck,
 	},
 })

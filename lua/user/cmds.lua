@@ -53,3 +53,7 @@ end, { nargs = "+" })
 vim.api.nvim_create_user_command("PR", function()
 	vim.cmd("!gh pr view -w > /dev/null 2>&1 || gh pr create -w")
 end, { nargs = 0 })
+
+vim.api.nvim_create_user_command("Wlog", function()
+	vim.cmd("!wlog cat")
+end, { nargs = 0 })
