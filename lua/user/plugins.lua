@@ -216,6 +216,11 @@ return packer.startup(function(use)
 						icon = "✓",
 						color = "green",
 					},
+					MARK = {
+						icon = "",
+						color = "hint",
+						alt = { "SECTION", "START" },
+					},
 				},
 				colors = {
 					green = "#00FF00",
