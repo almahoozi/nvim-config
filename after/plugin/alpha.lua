@@ -16,7 +16,7 @@ local TIME_FMT = "%Y-%m-%d %H:%M"
 local state = {
 	is_git_repo = nil,
 	branch = "detecting...",
-	tag = "detecting...",
+	version = "detecting...",
 	pull_status = "checking...",
 	pr = nil,
 	tmux_info = "checking...",
@@ -27,12 +27,17 @@ local state = {
 	recent_files = {
 		{ line = "  loading recent files...", path = nil },
 	},
+	history = {
+		{ line = "  loading history...", commit = nil },
+	},
 	make_targets = {
 		{ line = "  loading make targets...", target = nil },
 	},
 	line_actions = {},
 	shortcut_actions = {},
 }
+
+local section_is_visible
 
 local function run_system_sync_lines(cmd)
 	local result = vim.system(cmd, { text = true }):wait()
@@ -73,6 +78,27 @@ local function greeting()
 	return "Good evening"
 end
 
+local function title_case_name(value)
+	if not value or value == "" then
+		return "Friend"
+	end
+	local sanitized = value:gsub("[._%-]", " ")
+	local titled = sanitized:gsub("(%a)([%w']*)", function(first, rest)
+		return string.upper(first) .. string.lower(rest)
+	end)
+	return titled
+end
+
+local function has_local_session()
+	local candidates = { cwd .. "/Session.vim", cwd .. "/.Session.vim" }
+	for _, path in ipairs(candidates) do
+		if vim.fn.filereadable(path) == 1 then
+			return true
+		end
+	end
+	return false
+end
+
 local function format_duration(total_seconds)
 	total_seconds = math.max(0, math.floor(total_seconds or 0))
 	local days = math.floor(total_seconds / 86400)
@@ -89,31 +115,56 @@ local function format_duration(total_seconds)
 end
 
 local function context_lines()
-	local pr_line = "pr      none"
-	if state.pr then
-		pr_line = string.format("pr      #%d %s", state.pr.number, state.pr.title)
+	local action_parts = {}
+	if has_local_session() then
+		table.insert(action_parts, "[s] session")
 	end
-
-	local actions = "actions [s] session  [p] pull  [r] refresh  [q] quit"
-	if state.pr then
-		actions = "actions [s] session  [p] pull  [o] open-pr  [r] refresh  [q] quit"
+	if state.is_git_repo then
+		table.insert(action_parts, "[p] pull")
 	end
+	if state.pr then
+		table.insert(action_parts, "[o] open-pr")
+	end
+	table.insert(action_parts, "[r] refresh")
+	table.insert(action_parts, "[q] quit")
+	local actions = "actions " .. table.concat(action_parts, "  ")
 
-	return {
-		string.format("%s, %s", greeting(), vim.env.USER or "friend"),
+	local open_parts = {}
+	if section_is_visible("Changes", state.git_changes) then
+		table.insert(open_parts, "[g1-0] diff")
+	end
+	if section_is_visible("Recent", state.recent_files) then
+		table.insert(open_parts, "[f1-0] file")
+	end
+	if section_is_visible("Make", state.make_targets) then
+		table.insert(open_parts, "[m1-0] make")
+	end
+	table.insert(open_parts, "[Enter] row")
+	local open_line = "open    " .. table.concat(open_parts, "  ")
+
+	local lines = {
+		string.format("%s, %s", greeting(), title_case_name(vim.env.USER)),
 		"",
 		"cwd     " .. vim.fn.fnamemodify(cwd, ":~"),
 		"now     " .. os.date(TIME_FMT),
 		"tmux    " .. state.tmux_info,
 		"os      " .. state.os_info,
-		"branch  " .. state.branch,
-		"tag     " .. state.tag,
-		"remote  " .. state.pull_status,
-		pr_line,
-		"",
-		actions,
-		"open    [g1-0] diff  [f1-0] file  [m1-0] make  [Enter] row",
 	}
+
+	if state.is_git_repo then
+		table.insert(lines, "branch  " .. state.branch)
+		table.insert(lines, "version " .. state.version)
+		table.insert(lines, "remote  " .. state.pull_status)
+		if state.pr then
+			table.insert(lines, string.format("pr      #%d %s", state.pr.number, state.pr.title))
+		end
+	end
+
+	table.insert(lines, "")
+	table.insert(lines, actions)
+	table.insert(lines, open_line)
+
+	return lines
 end
 
 local function render_section(title, rows)
@@ -122,6 +173,38 @@ local function render_section(title, rows)
 		table.insert(lines, row.line)
 	end
 	return lines
+end
+
+section_is_visible = function(title, rows)
+	if title == "Changes" then
+		return state.is_git_repo == true and #rows > 0
+	end
+	return #rows > 0
+end
+
+local function build_body_lines()
+	local blocks = {}
+	if section_is_visible("Changes", state.git_changes) then
+		table.insert(blocks, render_section("Changes", state.git_changes))
+	end
+	if section_is_visible("Recent", state.recent_files) then
+		table.insert(blocks, render_section("Recent", state.recent_files))
+	end
+	if section_is_visible("History", state.history) then
+		table.insert(blocks, render_section("History", state.history))
+	end
+	if section_is_visible("Make", state.make_targets) then
+		table.insert(blocks, render_section("Make", state.make_targets))
+	end
+
+	local out = {}
+	for i, block in ipairs(blocks) do
+		vim.list_extend(out, block)
+		if i < #blocks then
+			table.insert(out, "")
+		end
+	end
+	return out
 end
 
 local function set_palette()
@@ -147,17 +230,24 @@ local function apply_highlights(buf)
 	vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
 
 	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	local current_section = nil
 	for idx, line in ipairs(lines) do
 		local row = idx - 1
 
-		if line == "Git" or line == "Make" or line == "Recents" then
+		if line == "Changes" or line == "Recent" or line == "History" or line == "Make" then
+			current_section = line
 			vim.api.nvim_buf_add_highlight(buf, ns, "AlphaHeading", row, 0, #line)
+		elseif line == "" then
+			current_section = nil
 		end
 
 		local label, value = line:match("^([a-z]+)%s+(.+)$")
-		if label and value and (label == "cwd" or label == "now" or label == "tmux" or label == "os" or label == "branch" or label == "tag" or label == "remote" or label == "pr" or label == "actions" or label == "open") then
+		if label and value and (label == "cwd" or label == "now" or label == "tmux" or label == "os" or label == "branch" or label == "version" or label == "remote" or label == "pr" or label == "actions" or label == "open") then
 			vim.api.nvim_buf_add_highlight(buf, ns, "AlphaLabel", row, 0, #label)
 			vim.api.nvim_buf_add_highlight(buf, ns, "AlphaValue", row, #label, #line)
+			if label == "cwd" then
+				state.line_actions[idx] = { kind = "cwd" }
+			end
 		end
 
 		local from = 1
@@ -238,14 +328,19 @@ local function apply_highlights(buf)
 				end
 			end
 		end
+
+		if current_section == "History" and vim.startswith(line, "  ") then
+			local commit = line:match("([0-9a-f]+)")
+			if commit then
+				state.line_actions[idx] = { kind = "history", commit = commit }
+			end
+		end
 	end
 end
 
 local function redraw_alpha()
 	dashboard.section.context.val = context_lines()
-	dashboard.section.changes.val = render_section("Git", state.git_changes)
-	dashboard.section.make.val = render_section("Make", state.make_targets)
-	dashboard.section.recent.val = render_section("Recents", state.recent_files)
+	dashboard.section.body.val = build_body_lines()
 	pcall(vim.cmd, "AlphaRedraw")
 	vim.defer_fn(function()
 		local buf = get_alpha_buf()
@@ -301,6 +396,30 @@ local function open_recent_file(path)
 	vim.cmd("edit " .. vim.fn.fnameescape(cwd .. "/" .. path))
 end
 
+local function open_history_commit(commit)
+	if not commit or commit == "" then
+		return
+	end
+
+	if vim.fn.exists(":Git") == 2 then
+		vim.cmd("tabnew")
+		vim.cmd("Git show " .. commit)
+		return
+	end
+
+	vim.cmd("tabnew")
+	local lines = run_system_sync_lines({ "git", "-C", cwd, "show", commit })
+	if #lines == 0 then
+		lines = { "No details for commit " .. commit }
+	end
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+	vim.bo.buftype = "nofile"
+	vim.bo.bufhidden = "wipe"
+	vim.bo.swapfile = false
+	vim.bo.filetype = "git"
+	vim.api.nvim_buf_set_name(0, "git-show://" .. commit)
+end
+
 local function run_make_target(target)
 	if not target or target == "" then
 		return
@@ -330,6 +449,8 @@ local function invoke_shortcut(prefix)
 		open_recent_file(action.path)
 	elseif action.kind == "make" then
 		run_make_target(action.target)
+	elseif action.kind == "history" then
+		open_history_commit(action.commit)
 	end
 end
 
@@ -417,7 +538,7 @@ local function refresh_make_targets()
 	end
 
 	if not makefile then
-		state.make_targets = { { line = "  no makefile", target = nil } }
+		state.make_targets = {}
 		redraw_alpha()
 		return
 	end
@@ -440,7 +561,7 @@ local function refresh_make_targets()
 	end
 
 	if #targets == 0 then
-		state.make_targets = { { line = "  no make recipes found", target = nil } }
+		state.make_targets = {}
 		redraw_alpha()
 		return
 	end
@@ -461,6 +582,42 @@ local function refresh_make_targets()
 
 	state.make_targets = out
 	redraw_alpha()
+end
+
+local function refresh_history_async()
+	if state.is_git_repo ~= true then
+		state.history = {}
+		redraw_alpha()
+		return
+	end
+
+	run_system_async({
+		"git",
+		"-C",
+		cwd,
+		"log",
+		"--graph",
+		"--decorate",
+		"--color=never",
+		"--pretty=format:%h %d %s | %an",
+		"-n",
+		"10",
+	}, function(ok, out)
+		if not ok or out == "" then
+			state.history = {}
+			redraw_alpha()
+			return
+		end
+
+		local lines = vim.split(out, "\n", { trimempty = true })
+		local rows = {}
+		for i = 1, math.min(#lines, 10) do
+			local commit = lines[i]:match("([0-9a-f]+)")
+			table.insert(rows, { line = "  " .. lines[i], commit = commit })
+		end
+		state.history = rows
+		redraw_alpha()
+	end)
 end
 
 local function refresh_recent_from_candidates(candidates)
@@ -511,7 +668,7 @@ local function refresh_recent_from_candidates(candidates)
 	end
 
 	if #out == 0 then
-		state.recent_files = { { line = "  no recent files (last 7 days)", path = nil } }
+		state.recent_files = {}
 	else
 		state.recent_files = out
 	end
@@ -584,14 +741,17 @@ end
 local function refresh_git_async()
 	if state.is_git_repo ~= true then
 		state.branch = "-"
-		state.tag = "-"
+		state.version = "-"
 		state.pull_status = "Not a git repository"
 		state.pr = nil
-		state.git_changes = { { line = "  not a git repository", path = nil } }
+		state.git_changes = {}
+		state.history = {}
 		refresh_recent_from_candidates({})
 		redraw_alpha()
 		return
 	end
+
+	refresh_history_async()
 
 	run_system_async({ "git", "-C", cwd, "branch", "--show-current" }, function(ok, out)
 		local branch_name = ok and out ~= "" and out or "detached"
@@ -601,7 +761,7 @@ local function refresh_git_async()
 	end)
 
 	run_system_async({ "git", "-C", cwd, "describe", "--tags", "--always" }, function(ok, out)
-		state.tag = ok and out ~= "" and out or "-"
+		state.version = ok and out ~= "" and out or "-"
 		redraw_alpha()
 	end)
 
@@ -712,16 +872,52 @@ local function refresh_header_times()
 	redraw_alpha()
 end
 
+local function action_change_cwd()
+	local next_cwd = vim.fn.input("cwd: ", cwd, "dir")
+	if next_cwd == nil or next_cwd == "" then
+		return
+	end
+
+	local expanded = vim.fn.fnamemodify(next_cwd, ":p")
+	if vim.fn.isdirectory(expanded) ~= 1 then
+		vim.notify("Invalid directory: " .. next_cwd, vim.log.levels.ERROR)
+		return
+	end
+
+	if vim.endswith(expanded, "/") then
+		cwd = expanded:sub(1, #expanded - 1)
+	else
+		cwd = expanded
+	end
+
+	vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+	state.is_git_repo = nil
+	state.branch = "detecting..."
+	state.version = "detecting..."
+	state.pull_status = "checking..."
+	state.pr = nil
+	state.git_changes = { { line = "  loading git changes...", path = nil } }
+	state.recent_files = { { line = "  loading recent files...", path = nil } }
+	state.history = { { line = "  loading history...", commit = nil } }
+	state.make_targets = { { line = "  loading make targets...", target = nil } }
+
+	redraw_alpha()
+	refresh_header_times()
+	refresh_make_targets()
+	run_system_async({ "git", "-C", cwd, "rev-parse", "--is-inside-work-tree" }, function(ok, out)
+		state.is_git_repo = ok and out == "true"
+		refresh_git_async()
+	end)
+end
+
 dashboard.section.header.val = {
 	"",
-	"N E O V I M   S T A T U S",
-	"-------------------------",
+	"N E O V I M",
+	"-----------",
 }
 dashboard.section.buttons.val = {}
 dashboard.section.context = { type = "text", val = context_lines(), opts = { position = "left" } }
-dashboard.section.changes = { type = "text", val = render_section("Git", state.git_changes), opts = { position = "left" } }
-dashboard.section.make = { type = "text", val = render_section("Make", state.make_targets), opts = { position = "left" } }
-dashboard.section.recent = { type = "text", val = render_section("Recents", state.recent_files), opts = { position = "left" } }
+dashboard.section.body = { type = "text", val = build_body_lines(), opts = { position = "left" } }
 
 local plugin_count = type(_G.packer_plugins) == "table" and vim.tbl_count(_G.packer_plugins) or 0
 local startup_ms = tonumber(vim.g.startup_time_ms) or 0
@@ -733,11 +929,7 @@ dashboard.config.layout = {
 	{ type = "padding", val = 1 },
 	dashboard.section.context,
 	{ type = "padding", val = 1 },
-	dashboard.section.changes,
-	{ type = "padding", val = 1 },
-	dashboard.section.make,
-	{ type = "padding", val = 1 },
-	dashboard.section.recent,
+	dashboard.section.body,
 	{ type = "padding", val = 1 },
 	dashboard.section.footer,
 }
@@ -788,6 +980,10 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 				open_recent_file(action.path)
 			elseif action.kind == "make" then
 				run_make_target(action.target)
+			elseif action.kind == "history" then
+				open_history_commit(action.commit)
+			elseif action.kind == "cwd" then
+				action_change_cwd()
 			end
 		end, { buffer = ev.buf, silent = true, nowait = true })
 		apply_highlights(ev.buf)

@@ -1,4 +1,5 @@
 local ag = vim.api.nvim_create_augroup("hlaugroup", {})
+local session_ag = vim.api.nvim_create_augroup("session_persist", { clear = true })
 
 vim.keymap.set("n", "<Esc>", function()
 	if vim.opt.hlsearch then
@@ -18,5 +19,13 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 	pattern = "*",
 	callback = function()
 		vim.highlight.on_yank({ higroup = "Search" })
+	end,
+})
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+	group = session_ag,
+	callback = function()
+		local session_file = vim.fn.getcwd() .. "/.Session.vim"
+		vim.cmd("silent! mksession! " .. vim.fn.fnameescape(session_file))
 	end,
 })
