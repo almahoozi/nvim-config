@@ -2,3 +2,4 @@
 /.packer-plugins
 /.config/
 /plugin/
+lazy-lock.json
