@@ -198,8 +198,17 @@ vim.diagnostic.config({
 })
 
 -- Round them corners
-vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded" })
-vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded" })
+vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
+	return vim.lsp.handlers.hover(err, result, ctx, vim.tbl_deep_extend("force", config or {}, { border = "rounded" }))
+end
+vim.lsp.handlers["textDocument/signatureHelp"] = function(err, result, ctx, config)
+	return vim.lsp.handlers.signature_help(
+		err,
+		result,
+		ctx,
+		vim.tbl_deep_extend("force", config or {}, { border = "rounded" })
+	)
+end
 
 local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
 local lsp_attach = function(client, bufnr)
@@ -225,6 +234,108 @@ local lsp_attach = function(client, bufnr)
 	local opts = { buffer = bufnr, noremap = true, silent = true }
 	local telescope = require("telescope.builtin")
 	local themes = require("telescope.themes")
+	local function collect_locations(method, params)
+		local responses = vim.lsp.buf_request_sync(0, method, params, 1000)
+		if not responses then
+			return {}, "utf-16"
+		end
+
+		local locations = {}
+		local offset_encoding = "utf-16"
+
+		for client_id, response in pairs(responses) do
+			if response.result then
+				local client = vim.lsp.get_client_by_id(client_id)
+				if client and client.offset_encoding then
+					offset_encoding = client.offset_encoding
+				end
+
+				if vim.islist(response.result) then
+					vim.list_extend(locations, response.result)
+				else
+					table.insert(locations, response.result)
+				end
+			end
+		end
+
+		return locations, offset_encoding
+	end
+
+	local function is_mock_location(location)
+		local uri = location.uri or location.targetUri
+		local path = uri and vim.uri_to_fname(uri) or ""
+		local basename = vim.fn.fnamemodify(path, ":t"):lower()
+		return basename:match("mock") ~= nil
+	end
+
+	local function open_locations(locations, offset_encoding, title)
+		if #locations == 1 then
+			vim.lsp.util.show_document(locations[1], offset_encoding, { reuse_win = true })
+			return
+		end
+
+		local items = vim.lsp.util.locations_to_items(locations, offset_encoding)
+		vim.fn.setqflist({}, " ", { title = title, items = items })
+		telescope.quickfix(themes.get_dropdown({
+			layout_config = {
+				width = 0.8,
+			},
+		}))
+	end
+
+	local function goto_locations(method, params, title, no_results_message, no_non_mock_message, include_mocks)
+		local locations, offset_encoding = collect_locations(method, params)
+
+		if #locations == 0 then
+			vim.notify(no_results_message, vim.log.levels.INFO)
+			return
+		end
+
+		if include_mocks then
+			open_locations(locations, offset_encoding, title)
+			return
+		end
+
+		local non_mock_locations = {}
+		for _, location in ipairs(locations) do
+			if not is_mock_location(location) then
+				table.insert(non_mock_locations, location)
+			end
+		end
+
+		if #non_mock_locations == 0 then
+			vim.notify(no_non_mock_message, vim.log.levels.INFO)
+			open_locations(locations, offset_encoding, title)
+			return
+		end
+
+		open_locations(non_mock_locations, offset_encoding, title)
+	end
+
+	local function lsp_implementations(include_mocks)
+		local params = vim.lsp.util.make_position_params()
+		goto_locations(
+			"textDocument/implementation",
+			params,
+			"LSP Implementations",
+			"No implementations found",
+			"No non-mock implementations found",
+			include_mocks
+		)
+	end
+
+	local function lsp_references(include_mocks)
+		local params = vim.lsp.util.make_position_params()
+		params.context = { includeDeclaration = true }
+		goto_locations(
+			"textDocument/references",
+			params,
+			"LSP References",
+			"No references found",
+			"No non-mock references found",
+			include_mocks
+		)
+	end
 
 	vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
 	vim.keymap.set("n", "<leader>vd", vim.diagnostic.open_float, opts)
@@ -235,11 +346,10 @@ local lsp_attach = function(client, bufnr)
 	vim.keymap.set({ "n", "i" }, "<C-h>", vim.lsp.buf.signature_help, opts)
 	-- TODO: Consolidate with telescope.lua mappings
 	vim.keymap.set("n", "gr", function()
-		telescope.lsp_references(themes.get_dropdown({
-			layout_config = {
-				width = 0.8,
-			},
-		}))
+		lsp_references(false)
+	end, opts)
+	vim.keymap.set("n", "grm", function()
+		lsp_references(true)
 	end, opts)
 	vim.keymap.set("n", "gd", function()
 		telescope.lsp_definitions(themes.get_dropdown())
@@ -247,12 +357,11 @@ local lsp_attach = function(client, bufnr)
 	vim.keymap.set("n", "gt", function()
 		telescope.lsp_type_definitions(themes.get_dropdown())
 	end, opts)
+	vim.keymap.set("n", "gim", function()
+		lsp_implementations(true)
+	end, opts)
 	vim.keymap.set("n", "gi", function()
-		telescope.lsp_implementations(themes.get_dropdown({
-			layout_config = {
-				width = 0.8,
-			},
-		}))
+		lsp_implementations(false)
 	end, opts)
 	vim.keymap.set("n", "<leader>o", function()
 		telescope.lsp_document_symbols(themes.get_ivy())

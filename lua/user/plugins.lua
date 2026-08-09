@@ -243,6 +243,22 @@ return packer.startup(function(use)
 	})
 
 	use({
+		"olimorris/codecompanion.nvim",
+		config = function()
+			require("codecompanion").setup({
+				interactions = {
+					chat = {
+						adapter = {
+							name = "opencode",
+							model = "gpt-5.1-codex",
+						},
+					},
+				},
+			})
+		end,
+	})
+
+	use({
 		"echasnovski/mini.nvim",
 		config = function()
 			require("mini.ai").setup({ n_lines = 500 })
@@ -267,6 +283,41 @@ return packer.startup(function(use)
 			local notes = require("notes")
 			notes.setup()
 			vim.keymap.set("n", "<leader>n", notes.open_global, { noremap = true, silent = true })
+		end,
+	})
+	use({
+		"lervag/vimtex",
+		ft = { "tex" },
+		config = function()
+			vim.g.vimtex_view_method = "skim"
+			vim.g.vimtex_compiler_method = "latexmk"
+			vim.g.vimtex_compiler_latexmk_engines = {
+				_ = "-xelatex",
+			}
+		end,
+	})
+	use({
+		"~/Documents/Source/personal/nvim/pear.nvim",
+		disable = true,
+		-- "almahoozi/pear.nvim",
+		config = function()
+			local pear = require("pear")
+			pear.setup()
+			vim.keymap.set("n", "<leader>pp", function()
+				pear.start()
+				--local session = pear.start()
+				--if session then
+				--vim.api.nvim_create_user_command("PairSend", function(args)
+				--session:_send(args.args)
+				--end, { nargs = "+" })
+				--vim.api.nvim_create_user_command("PairCursor", function()
+				---- current cursor position
+				---- need row and col
+				--local cursor = vim.api.nvim_win_get_cursor(0)
+				--session:cursor_move(cursor[1], cursor[2])
+				--end, {})
+				--end
+			end, { noremap = true, silent = true })
 		end,
 	})
 
