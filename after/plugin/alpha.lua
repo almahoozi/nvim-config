@@ -268,6 +268,39 @@ local function render_section(title, rows)
 	return lines
 end
 
+local function has_row_line(rows, value)
+	for _, item in ipairs(rows) do
+		if item.line == value then
+			return true
+		end
+	end
+	return false
+end
+
+local function set_alpha_window_options(buf)
+	for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+		vim.wo[win].number = true
+		vim.wo[win].relativenumber = true
+	end
+end
+
+local function find_last_plain(haystack, needle)
+	if not haystack or not needle or needle == "" then
+		return nil
+	end
+	local from = 1
+	local last = nil
+	while true do
+		local s = haystack:find(needle, from, true)
+		if not s then
+			break
+		end
+		last = s
+		from = s + 1
+	end
+	return last
+end
+
 section_is_visible = function(title, rows)
 	if title == "Changes" then
 		return state.is_git_repo == true and #rows > 0
@@ -327,6 +360,17 @@ local function apply_highlights(buf)
 
 	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 	local current_section = nil
+	local todo_loc_queue = {}
+	for _, item in ipairs(state.todo_rows) do
+		if item.path and item.lnum then
+			local loc = item.loc
+			if loc and loc ~= "" then
+				todo_loc_queue[loc] = todo_loc_queue[loc] or {}
+				table.insert(todo_loc_queue[loc], item)
+			end
+		end
+	end
+
 	for idx, line in ipairs(lines) do
 		local row = idx - 1
 
@@ -336,6 +380,10 @@ local function apply_highlights(buf)
 		elseif line == "" then
 			current_section = nil
 		end
+
+		local trailing_loc = line:match("(%S+:%d+)%s*$")
+		local queued = trailing_loc and todo_loc_queue[trailing_loc] or nil
+		local task_item = queued and queued[1] or nil
 
 		local label, value = line:match("^([a-z]+)%s+(.+)$")
 		if label and value and (label == "cwd" or label == "now" or label == "tmux" or label == "os" or label == "branch" or label == "version" or label == "tag" or label == "remote" or label == "pr" or label == "actions" or label == "open") then
@@ -376,11 +424,18 @@ local function apply_highlights(buf)
 			dur_from = e + 1
 		end
 
-		if current_section == "Tasks" then
-			local todo_loc = line:match("(%S+:%d+)%s*$")
-			if todo_loc then
-				local s_loc = #line - #todo_loc + 1
-				vim.api.nvim_buf_add_highlight(buf, ns, "AlphaMuted", row, s_loc - 1, #line)
+		if trailing_loc then
+			local s_loc = find_last_plain(line, trailing_loc)
+			if s_loc then
+				vim.api.nvim_buf_add_highlight(buf, ns, "AlphaMuted", row, s_loc - 1, s_loc - 1 + #trailing_loc)
+			end
+		end
+
+		local is_task_header = line:match("^%s+[%w]%s+[%w_%-]+%s+%(%d")
+		if is_task_header then
+			local s_hint = line:find("%S")
+			if s_hint then
+				vim.api.nvim_buf_add_highlight(buf, ns, "AlphaMuted", row, s_hint - 1, s_hint)
 			end
 		end
 
@@ -437,30 +492,25 @@ local function apply_highlights(buf)
 		if tk then
 			for _, item in ipairs(state.todo_rows) do
 				if item.shortcut == tk and item.path and item.lnum then
-					state.line_actions[idx] = { kind = "todo", path = item.path, lnum = item.lnum, col = item.col or 1 }
 					state.shortcut_actions[tk] = { kind = "todo", path = item.path, lnum = item.lnum, col = item.col or 1 }
 					break
 				end
 			end
 		end
 
-		if current_section == "Tasks" and not state.line_actions[idx] then
-			for _, item in ipairs(state.todo_rows) do
-				if item.path and item.lnum and item.line == line then
-					state.line_actions[idx] = { kind = "todo", path = item.path, lnum = item.lnum, col = item.col or 1 }
-					break
-				end
-			end
+		if task_item then
+			state.line_actions[idx] = { kind = "todo", path = task_item.path, lnum = task_item.lnum, col = task_item.col or 1 }
+			table.remove(queued, 1)
 		end
 
 		if line:match("^%s*%.%.%. and %d+ more") then
 			local todo_tag = line:match(" in ([^%s]+)$")
 			if todo_tag and todo_tag ~= "" then
 				state.line_actions[idx] = { kind = "more", section = "todos", tag = todo_tag }
-			elseif current_section == "Changes" then
-				state.line_actions[idx] = { kind = "more", section = "changes" }
-			elseif current_section == "Make" then
+			elseif has_row_line(state.make_targets, line) or current_section == "Make" then
 				state.line_actions[idx] = { kind = "more", section = "make" }
+			elseif has_row_line(state.git_changes, line) or current_section == "Changes" then
+				state.line_actions[idx] = { kind = "more", section = "changes" }
 			end
 		end
 
@@ -481,6 +531,10 @@ local function redraw_alpha()
 		local buf = get_alpha_buf()
 		if buf then
 			apply_highlights(buf)
+			set_alpha_window_options(buf)
+			vim.defer_fn(function()
+				set_alpha_window_options(buf)
+			end, 80)
 		end
 	end, 40)
 end
@@ -581,9 +635,15 @@ local function invoke_shortcut(prefix)
 	if key == "" then
 		return
 	end
+	if prefix == "g" and key == "g" then
+		vim.cmd("normal! gg")
+		return
+	end
 	local action = state.shortcut_actions[prefix .. key]
 	if not action then
-		vim.notify("No entry for " .. prefix .. key, vim.log.levels.INFO)
+		if prefix ~= "g" then
+			vim.notify("No entry for " .. prefix .. key, vim.log.levels.INFO)
+		end
 		return
 	end
 	if action.kind == "git" then
@@ -784,6 +844,27 @@ local function refresh_todos_async(retry_count)
 			table.insert(grouped[tag], item)
 		end
 
+		for _, items in pairs(grouped) do
+			table.sort(items, function(a, b)
+				local a_rel = string.lower(vim.fn.fnamemodify(a.filename or "", ":."))
+				local b_rel = string.lower(vim.fn.fnamemodify(b.filename or "", ":."))
+				if a_rel ~= b_rel then
+					return a_rel < b_rel
+				end
+				local a_lnum = tonumber(a.lnum) or 0
+				local b_lnum = tonumber(b.lnum) or 0
+				if a_lnum ~= b_lnum then
+					return a_lnum < b_lnum
+				end
+				local a_col = tonumber(a.col) or 0
+				local b_col = tonumber(b.col) or 0
+				if a_col ~= b_col then
+					return a_col < b_col
+				end
+				return (a.message or a.text or "") < (b.message or b.text or "")
+			end)
+		end
+
 		local tags = vim.tbl_keys(grouped)
 		table.sort(tags)
 		assign_todo_tag_keys(tags)
@@ -816,6 +897,7 @@ local function refresh_todos_async(retry_count)
 					if rel == "" then
 						rel = item.filename or ""
 					end
+					local loc = string.format("%s:%d", rel, item.lnum or 1)
 					local pos = idx
 					if pos <= 10 then
 						local digit = pos == 10 and "0" or tostring(pos)
@@ -824,14 +906,16 @@ local function refresh_todos_async(retry_count)
 							path = item.filename,
 							lnum = item.lnum,
 							col = item.col,
-							line = string.format("  [t%s%s] %s %s:%d", tag_key, digit, message, rel, item.lnum or 1),
+							loc = loc,
+							line = string.format("  [t%s%s] %s %s", tag_key, digit, message, loc),
 						})
 					else
 						table.insert(rows, {
 							path = item.filename,
 							lnum = item.lnum,
 							col = item.col,
-							line = string.format("         %s %s:%d", message, rel, item.lnum or 1),
+							loc = loc,
+							line = string.format("         %s %s", message, loc),
 						})
 					end
 				end
@@ -1270,6 +1354,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 	pattern = "alpha",
 	callback = function(ev)
+		set_alpha_window_options(ev.buf)
 		vim.keymap.set("n", "s", action_restore_session, { buffer = ev.buf, silent = true, nowait = true })
 		vim.keymap.set("n", "p", action_pull, { buffer = ev.buf, silent = true, nowait = true })
 		vim.keymap.set("n", "o", action_open_pr, { buffer = ev.buf, silent = true, nowait = true })
@@ -1315,6 +1400,16 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 			end
 		end, { buffer = ev.buf, silent = true, nowait = true })
 		apply_highlights(ev.buf)
+		set_alpha_window_options(ev.buf)
+	end,
+})
+
+vim.api.nvim_create_autocmd("WinEnter", {
+	callback = function()
+		if vim.bo.filetype == "alpha" then
+			vim.wo.number = true
+			vim.wo.relativenumber = true
+		end
 	end,
 })
 
