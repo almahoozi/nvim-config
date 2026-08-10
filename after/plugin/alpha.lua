@@ -17,6 +17,9 @@ local state = {
 	is_git_repo = nil,
 	branch = "detecting...",
 	version = "detecting...",
+	latest_tag = nil,
+	latest_tag_date = nil,
+	latest_tag_unix = nil,
 	pull_status = "checking...",
 	pr = nil,
 	tmux_info = "checking...",
@@ -33,6 +36,15 @@ local state = {
 	make_targets = {
 		{ line = "  loading make targets...", target = nil },
 	},
+	todo_rows = {
+		{ line = "  loading todo comments...", path = nil },
+	},
+	git_limit = 10,
+	make_limit = 10,
+	todo_page_size = 10,
+	todo_tag_limits = {},
+	todo_tag_keys = {},
+	todo_key_to_tag = {},
 	line_actions = {},
 	shortcut_actions = {},
 }
@@ -114,6 +126,83 @@ local function format_duration(total_seconds)
 	return string.format("%dm", minutes)
 end
 
+local function truncate_text(text, max_len)
+	if not text or #text <= max_len then
+		return text
+	end
+	return text:sub(1, max_len - 1) .. "..."
+end
+
+local function format_tag_line()
+	if not state.latest_tag or state.latest_tag == "" then
+		return "-"
+	end
+
+	local tag_text = state.latest_tag
+	if state.latest_tag_date and state.latest_tag_date ~= "" then
+		tag_text = tag_text .. " " .. state.latest_tag_date
+	end
+
+	if state.latest_tag_unix then
+		local since = format_duration(os.time() - state.latest_tag_unix)
+		tag_text = string.format("%s (%s)", tag_text, since)
+	end
+
+	return tag_text
+end
+
+local function pick_todo_tag_key(tag, used)
+	local lowered = string.lower(tag or "")
+	for ch in lowered:gmatch("[%w]") do
+		if not used[ch] then
+			used[ch] = true
+			return ch
+		end
+	end
+	for code = string.byte("a"), string.byte("z") do
+		local ch = string.char(code)
+		if not used[ch] then
+			used[ch] = true
+			return ch
+		end
+	end
+	for code = string.byte("0"), string.byte("9") do
+		local ch = string.char(code)
+		if not used[ch] then
+			used[ch] = true
+			return ch
+		end
+	end
+	return nil
+end
+
+local function assign_todo_tag_keys(tags)
+	local used = {}
+	local next_keys = {}
+
+	for _, tag in ipairs(tags) do
+		local key = state.todo_tag_keys[tag]
+		if key and not used[key] then
+			used[key] = true
+			next_keys[tag] = key
+		end
+	end
+
+	for _, tag in ipairs(tags) do
+		if not next_keys[tag] then
+			next_keys[tag] = pick_todo_tag_key(tag, used)
+		end
+	end
+
+	state.todo_tag_keys = next_keys
+	state.todo_key_to_tag = {}
+	for tag, key in pairs(next_keys) do
+		if key then
+			state.todo_key_to_tag[key] = tag
+		end
+	end
+end
+
 local function context_lines()
 	local action_parts = {}
 	if has_local_session() then
@@ -139,6 +228,9 @@ local function context_lines()
 	if section_is_visible("Make", state.make_targets) then
 		table.insert(open_parts, "[m1-0] make")
 	end
+	if section_is_visible("Tasks", state.todo_rows) then
+		table.insert(open_parts, "[t][type][1-0] task")
+	end
 	table.insert(open_parts, "[Enter] row")
 	local open_line = "open    " .. table.concat(open_parts, "  ")
 
@@ -154,6 +246,7 @@ local function context_lines()
 	if state.is_git_repo then
 		table.insert(lines, "branch  " .. state.branch)
 		table.insert(lines, "version " .. state.version)
+		table.insert(lines, "tag     " .. format_tag_line())
 		table.insert(lines, "remote  " .. state.pull_status)
 		if state.pr then
 			table.insert(lines, string.format("pr      #%d %s", state.pr.number, state.pr.title))
@@ -196,6 +289,9 @@ local function build_body_lines()
 	if section_is_visible("Make", state.make_targets) then
 		table.insert(blocks, render_section("Make", state.make_targets))
 	end
+	if section_is_visible("Tasks", state.todo_rows) then
+		table.insert(blocks, render_section("Tasks", state.todo_rows))
+	end
 
 	local out = {}
 	for i, block in ipairs(blocks) do
@@ -234,7 +330,7 @@ local function apply_highlights(buf)
 	for idx, line in ipairs(lines) do
 		local row = idx - 1
 
-		if line == "Changes" or line == "Recent" or line == "History" or line == "Make" then
+		if line == "Changes" or line == "Recent" or line == "History" or line == "Make" or line == "Tasks" then
 			current_section = line
 			vim.api.nvim_buf_add_highlight(buf, ns, "AlphaHeading", row, 0, #line)
 		elseif line == "" then
@@ -242,7 +338,7 @@ local function apply_highlights(buf)
 		end
 
 		local label, value = line:match("^([a-z]+)%s+(.+)$")
-		if label and value and (label == "cwd" or label == "now" or label == "tmux" or label == "os" or label == "branch" or label == "version" or label == "remote" or label == "pr" or label == "actions" or label == "open") then
+		if label and value and (label == "cwd" or label == "now" or label == "tmux" or label == "os" or label == "branch" or label == "version" or label == "tag" or label == "remote" or label == "pr" or label == "actions" or label == "open") then
 			vim.api.nvim_buf_add_highlight(buf, ns, "AlphaLabel", row, 0, #label)
 			vim.api.nvim_buf_add_highlight(buf, ns, "AlphaValue", row, #label, #line)
 			if label == "cwd" then
@@ -280,7 +376,15 @@ local function apply_highlights(buf)
 			dur_from = e + 1
 		end
 
-		local gk = line:match("^%s*%[(g[0-9])%]%s")
+		if current_section == "Tasks" then
+			local todo_loc = line:match("(%S+:%d+)%s*$")
+			if todo_loc then
+				local s_loc = #line - #todo_loc + 1
+				vim.api.nvim_buf_add_highlight(buf, ns, "AlphaMuted", row, s_loc - 1, #line)
+			end
+		end
+
+		local gk = line:match("^%s*%[(g%d+)%]%s")
 		if gk then
 			for _, item in ipairs(state.git_changes) do
 				if item.shortcut == gk and item.path then
@@ -307,7 +411,7 @@ local function apply_highlights(buf)
 			end
 		end
 
-		local fk = line:match("^%s*%[(f[0-9])%]%s")
+		local fk = line:match("^%s*%[(f%d+)%]%s")
 		if fk then
 			for _, item in ipairs(state.recent_files) do
 				if item.shortcut == fk and item.path then
@@ -318,7 +422,7 @@ local function apply_highlights(buf)
 			end
 		end
 
-		local mk = line:match("^%s*%[(m[0-9])%]%s")
+		local mk = line:match("^%s*%[(m%d+)%]%s")
 		if mk then
 			for _, item in ipairs(state.make_targets) do
 				if item.shortcut == mk and item.target then
@@ -326,6 +430,37 @@ local function apply_highlights(buf)
 					state.shortcut_actions[mk] = { kind = "make", target = item.target }
 					break
 				end
+			end
+		end
+
+		local tk = line:match("^%s*%[(t[%w][0-9])%]%s")
+		if tk then
+			for _, item in ipairs(state.todo_rows) do
+				if item.shortcut == tk and item.path and item.lnum then
+					state.line_actions[idx] = { kind = "todo", path = item.path, lnum = item.lnum, col = item.col or 1 }
+					state.shortcut_actions[tk] = { kind = "todo", path = item.path, lnum = item.lnum, col = item.col or 1 }
+					break
+				end
+			end
+		end
+
+		if current_section == "Tasks" and not state.line_actions[idx] then
+			for _, item in ipairs(state.todo_rows) do
+				if item.path and item.lnum and item.line == line then
+					state.line_actions[idx] = { kind = "todo", path = item.path, lnum = item.lnum, col = item.col or 1 }
+					break
+				end
+			end
+		end
+
+		if line:match("^%s*%.%.%. and %d+ more") then
+			local todo_tag = line:match(" in ([^%s]+)$")
+			if todo_tag and todo_tag ~= "" then
+				state.line_actions[idx] = { kind = "more", section = "todos", tag = todo_tag }
+			elseif current_section == "Changes" then
+				state.line_actions[idx] = { kind = "more", section = "changes" }
+			elseif current_section == "Make" then
+				state.line_actions[idx] = { kind = "more", section = "make" }
 			end
 		end
 
@@ -396,6 +531,14 @@ local function open_recent_file(path)
 	vim.cmd("edit " .. vim.fn.fnameescape(cwd .. "/" .. path))
 end
 
+local function open_todo_item(path, lnum, col)
+	if not path or path == "" then
+		return
+	end
+	vim.cmd("edit " .. vim.fn.fnameescape(path))
+	pcall(vim.api.nvim_win_set_cursor, 0, { math.max(1, tonumber(lnum) or 1), math.max(0, (tonumber(col) or 1) - 1) })
+end
+
 local function open_history_commit(commit)
 	if not commit or commit == "" then
 		return
@@ -451,7 +594,26 @@ local function invoke_shortcut(prefix)
 		run_make_target(action.target)
 	elseif action.kind == "history" then
 		open_history_commit(action.commit)
+	elseif action.kind == "todo" then
+		open_todo_item(action.path, action.lnum, action.col)
 	end
+end
+
+local function invoke_todo_shortcut()
+	local tag_key = string.lower(vim.fn.getcharstr())
+	if tag_key == "" then
+		return
+	end
+	local digit = vim.fn.getcharstr()
+	if digit == "" then
+		return
+	end
+	local action = state.shortcut_actions["t" .. tag_key .. digit]
+	if not action then
+		vim.notify("No TODO entry for t" .. tag_key .. digit, vim.log.levels.INFO)
+		return
+	end
+	open_todo_item(action.path, action.lnum, action.col)
 end
 
 local function action_open_pr()
@@ -567,7 +729,8 @@ local function refresh_make_targets()
 	end
 
 	local out = {}
-	for i = 1, math.min(#targets, 10) do
+	local limit = math.max(1, state.make_limit or 10)
+	for i = 1, math.min(#targets, limit) do
 		local digit = i == 10 and "0" or tostring(i)
 		table.insert(out, {
 			shortcut = "m" .. digit,
@@ -576,12 +739,120 @@ local function refresh_make_targets()
 		})
 	end
 
-	if #targets > 10 then
-		table.insert(out, { line = string.format("  ... and %d more", #targets - 10), target = nil })
+	if #targets > limit then
+		table.insert(out, { line = string.format("  ... and %d more", #targets - limit), target = nil })
 	end
 
 	state.make_targets = out
 	redraw_alpha()
+end
+
+local function refresh_todos_async(retry_count)
+	retry_count = retry_count or 0
+	local ok_search, search = pcall(require, "todo-comments.search")
+	local ok_config, todo_config = pcall(require, "todo-comments.config")
+	if ok_search and ok_config and not todo_config.loaded and retry_count < 5 then
+		vim.defer_fn(function()
+			refresh_todos_async(retry_count + 1)
+		end, 120)
+		return
+	end
+
+	if not ok_search or not ok_config or not todo_config.loaded then
+		state.todo_rows = {}
+		state.todo_tag_limits = {}
+		state.todo_tag_keys = {}
+		state.todo_key_to_tag = {}
+		redraw_alpha()
+		return
+	end
+
+	search.search(function(results)
+		if not results or vim.tbl_isempty(results) then
+			state.todo_rows = {}
+			state.todo_tag_limits = {}
+			state.todo_tag_keys = {}
+			state.todo_key_to_tag = {}
+			redraw_alpha()
+			return
+		end
+
+		local grouped = {}
+		for _, item in ipairs(results) do
+			local tag = item.tag or "TODO"
+			grouped[tag] = grouped[tag] or {}
+			table.insert(grouped[tag], item)
+		end
+
+		local tags = vim.tbl_keys(grouped)
+		table.sort(tags)
+		assign_todo_tag_keys(tags)
+
+		local rows = {}
+		local valid_limits = {}
+		for tag_index, tag in ipairs(tags) do
+			local items = grouped[tag]
+			local tag_key = state.todo_tag_keys[tag]
+			if tag_key then
+				local size = math.max(1, state.todo_page_size or 10)
+				local limit = state.todo_tag_limits[tag] or size
+				if limit < size then
+					limit = size
+				end
+				valid_limits[tag] = limit
+
+				local first = 1
+				local last = math.min(#items, limit)
+				if #items > size then
+					table.insert(rows, { line = string.format("  %s %s (%d-%d/%d)", tag_key, tag, first, last, #items), path = nil })
+				else
+					table.insert(rows, { line = string.format("  %s %s (%d)", tag_key, tag, #items), path = nil })
+				end
+
+				for idx = first, last do
+					local item = items[idx]
+					local message = truncate_text(item.message or item.text or "", 80)
+					local rel = vim.fn.fnamemodify(item.filename or "", ":.")
+					if rel == "" then
+						rel = item.filename or ""
+					end
+					local pos = idx
+					if pos <= 10 then
+						local digit = pos == 10 and "0" or tostring(pos)
+						table.insert(rows, {
+							shortcut = "t" .. tag_key .. digit,
+							path = item.filename,
+							lnum = item.lnum,
+							col = item.col,
+							line = string.format("  [t%s%s] %s %s:%d", tag_key, digit, message, rel, item.lnum or 1),
+						})
+					else
+						table.insert(rows, {
+							path = item.filename,
+							lnum = item.lnum,
+							col = item.col,
+							line = string.format("         %s %s:%d", message, rel, item.lnum or 1),
+						})
+					end
+				end
+
+				if last < #items then
+					table.insert(rows, { line = string.format("  ... and %d more in %s", #items - last, tag), path = nil })
+				end
+
+				if tag_index < #tags then
+					table.insert(rows, { line = "", path = nil })
+				end
+			end
+		end
+		state.todo_tag_limits = valid_limits
+
+		state.todo_rows = rows
+		redraw_alpha()
+	end, {
+		cwd = cwd,
+		disable_not_found_warnings = true,
+	})
 end
 
 local function refresh_history_async()
@@ -742,6 +1013,9 @@ local function refresh_git_async()
 	if state.is_git_repo ~= true then
 		state.branch = "-"
 		state.version = "-"
+		state.latest_tag = nil
+		state.latest_tag_date = nil
+		state.latest_tag_unix = nil
 		state.pull_status = "Not a git repository"
 		state.pr = nil
 		state.git_changes = {}
@@ -762,6 +1036,22 @@ local function refresh_git_async()
 
 	run_system_async({ "git", "-C", cwd, "describe", "--tags", "--always" }, function(ok, out)
 		state.version = ok and out ~= "" and out or "-"
+		redraw_alpha()
+	end)
+
+	run_system_async({ "git", "-C", cwd, "for-each-ref", "--sort=-creatordate", "--count=1", "--format=%(refname:short)|%(creatordate:format:%Y-%m-%d %H:%M)|%(creatordate:unix)", "refs/tags" }, function(ok, out)
+		if not ok or out == "" then
+			state.latest_tag = nil
+			state.latest_tag_date = nil
+			state.latest_tag_unix = nil
+			redraw_alpha()
+			return
+		end
+
+		local tag, created, created_unix = out:match("^([^|]+)|([^|]+)|(%d+)$")
+		state.latest_tag = tag or nil
+		state.latest_tag_date = created or nil
+		state.latest_tag_unix = tonumber(created_unix)
 		redraw_alpha()
 	end)
 
@@ -794,7 +1084,8 @@ local function refresh_git_async()
 		local status_lines = vim.split(out, "\n", { trimempty = true })
 		local top = {}
 		local candidates = {}
-		for i = 1, math.min(#status_lines, 10) do
+		local limit = math.max(1, state.git_limit or 10)
+		for i = 1, math.min(#status_lines, limit) do
 			local entry = status_lines[i]
 			local code = entry:sub(1, 2)
 			local path = vim.trim(entry:sub(4))
@@ -831,8 +1122,8 @@ local function refresh_git_async()
 						line = string.format("  [g%s] %s +%-4d -%-4d %s", digit, status, c.add, c.del, item.path),
 					})
 				end
-				if #status_lines > 10 then
-					table.insert(rows, { line = string.format("  ... and %d more", #status_lines - 10), path = nil })
+				if #status_lines > limit then
+					table.insert(rows, { line = string.format("  ... and %d more", #status_lines - limit), path = nil })
 				end
 				state.git_changes = rows
 				redraw_alpha()
@@ -894,20 +1185,49 @@ local function action_change_cwd()
 	state.is_git_repo = nil
 	state.branch = "detecting..."
 	state.version = "detecting..."
+	state.latest_tag = nil
+	state.latest_tag_date = nil
+	state.latest_tag_unix = nil
 	state.pull_status = "checking..."
 	state.pr = nil
 	state.git_changes = { { line = "  loading git changes...", path = nil } }
 	state.recent_files = { { line = "  loading recent files...", path = nil } }
 	state.history = { { line = "  loading history...", commit = nil } }
 	state.make_targets = { { line = "  loading make targets...", target = nil } }
+	state.todo_rows = { { line = "  loading todo comments...", path = nil } }
+	state.git_limit = 10
+	state.make_limit = 10
+	state.todo_tag_limits = {}
+	state.todo_tag_keys = {}
+	state.todo_key_to_tag = {}
 
 	redraw_alpha()
 	refresh_header_times()
 	refresh_make_targets()
+	refresh_todos_async()
 	run_system_async({ "git", "-C", cwd, "rev-parse", "--is-inside-work-tree" }, function(ok, out)
 		state.is_git_repo = ok and out == "true"
 		refresh_git_async()
 	end)
+end
+
+local function action_load_more(section, tag)
+	if section == "changes" then
+		state.git_limit = state.git_limit + 10
+		refresh_git_async()
+		return
+	end
+
+	if section == "make" then
+		state.make_limit = state.make_limit + 10
+		refresh_make_targets()
+		return
+	end
+
+	if section == "todos" and tag then
+		state.todo_tag_limits[tag] = (state.todo_tag_limits[tag] or state.todo_page_size) + state.todo_page_size
+		refresh_todos_async()
+	end
 end
 
 dashboard.section.header.val = {
@@ -957,6 +1277,7 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 			refresh_header_times()
 			refresh_git_async()
 			refresh_make_targets()
+			refresh_todos_async()
 		end, { buffer = ev.buf, silent = true, nowait = true })
 		vim.keymap.set("n", "q", "<cmd>qa<cr>", { buffer = ev.buf, silent = true, nowait = true })
 		vim.keymap.set("n", "g", function()
@@ -967,6 +1288,9 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 		end, { buffer = ev.buf, silent = true, nowait = true })
 		vim.keymap.set("n", "m", function()
 			invoke_shortcut("m")
+		end, { buffer = ev.buf, silent = true, nowait = true })
+		vim.keymap.set("n", "t", function()
+			invoke_todo_shortcut()
 		end, { buffer = ev.buf, silent = true, nowait = true })
 		vim.keymap.set("n", "<CR>", function()
 			local lnum = vim.api.nvim_win_get_cursor(0)[1]
@@ -984,6 +1308,10 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 				open_history_commit(action.commit)
 			elseif action.kind == "cwd" then
 				action_change_cwd()
+			elseif action.kind == "todo" then
+				open_todo_item(action.path, action.lnum, action.col)
+			elseif action.kind == "more" then
+				action_load_more(action.section, action.tag)
 			end
 		end, { buffer = ev.buf, silent = true, nowait = true })
 		apply_highlights(ev.buf)
@@ -997,5 +1325,6 @@ vim.schedule(function()
 	end)
 	refresh_header_times()
 	refresh_make_targets()
+	refresh_todos_async()
 	redraw_alpha()
 end)
