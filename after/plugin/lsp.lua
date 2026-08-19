@@ -270,7 +270,7 @@ local lsp_attach = function(client, bufnr)
 
 	local function open_locations(locations, offset_encoding, title)
 		if #locations == 1 then
-			vim.lsp.util.show_document(locations[1], offset_encoding, { reuse_win = true })
+			vim.lsp.util.show_document(locations[1], offset_encoding)
 			return
 		end
 
@@ -285,6 +285,24 @@ local lsp_attach = function(client, bufnr)
 
 	local function goto_locations(method, params, title, no_results_message, no_non_mock_message, include_mocks)
 		local locations, offset_encoding = collect_locations(method, params)
+
+		if #locations > 1 then
+			locations = vim.tbl_filter(function(location)
+				local uri = location.uri or location.targetUri
+				local range = location.range or location.targetSelectionRange
+				if uri ~= params.textDocument.uri or not range then
+					return true
+				end
+
+				local position = params.position
+				return not (
+					range.start.line <= position.line
+					and position.line <= range["end"].line
+					and (range.start.line ~= position.line or range.start.character <= position.character)
+					and (range["end"].line ~= position.line or position.character < range["end"].character)
+				)
+			end, locations)
+		end
 
 		if #locations == 0 then
 			vim.notify(no_results_message, vim.log.levels.INFO)
